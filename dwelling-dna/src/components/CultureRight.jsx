@@ -64,10 +64,24 @@ function EditableField({ value, onChange, multiline, className, placeholder }) {
   );
 }
 
+const EXPERT_SYSTEM = `שם: Expert Analyst - Cultural Deep Dive
+שפה: עברית (RTL)
+סוג: תשובה קצרה לשאלה
+
+אתה מומחה מולטי-דיסציפלינרי בעל ידע בעומק בתחומי אנתרופולוגיה, ארכיאולוגיה וארכיטקטורה. התפקיד שלך: לתרגם תרבויות לשפה נגישה דרך עדויות ממשיות.
+
+טווח התשובה: משפט אחד עד שני משפטים קצרים בלבד. לא יותר.
+הטון: חד וברור, ללא הסברים שניים. מעוגן בעדות אם קיימת. מדבר על "מדוע" לא על "מה".
+המבנה: (1) תשובה ישירה לשאלה. (2) קשר לערך תרבותי או כוח עמוק, אם צריך.
+כללים: אל תוסיף "כאשר..." או "כנראה...". אל תמצטט מאפליקציה בעצמך. אם לא בטוח — תגיד "לא בטוח" בקצרה.`;
+
 const CultureRight = forwardRef(function CultureRight({ culture, content, onContentChange, pageNum }, ref) {
   const { id, index, name, archetype, chaos, order, role, colors, gradient, insight, prompts } = culture;
   const [generatedPrompts, setGeneratedPrompts] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [asking, setAsking] = useState(false);
   const hasClaudeKey = !!import.meta.env.VITE_ANTHROPIC_API_KEY;
 
   const handleChange = useCallback((field) => (val) => {
@@ -101,6 +115,25 @@ const CultureRight = forwardRef(function CultureRight({ culture, content, onCont
   };
 
   const activePrompts = generatedPrompts || prompts;
+
+  const handleAsk = async () => {
+    if (!question.trim() || asking) return;
+    setAsking(true);
+    setAnswer('');
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 150,
+        system: `${EXPERT_SYSTEM}\n\nהקשר: השאלה מתייחסת לתרבות "${name}" — ארכיטייפ: ${archetype}. כאוס: ${chaos}. סדר: ${order}. תפקיד: ${role}.`,
+        messages: [{ role: 'user', content: question.trim() }],
+      });
+      setAnswer(response.content[0]?.text ?? '');
+    } catch {
+      setAnswer('שגיאה בחיבור למומחה.');
+    } finally {
+      setAsking(false);
+    }
+  };
 
   return (
     <div
@@ -162,6 +195,33 @@ const CultureRight = forwardRef(function CultureRight({ culture, content, onCont
             onChange={handleChange('post')}
             placeholder="הוסף פוסט קצר..."
           />
+
+          {hasClaudeKey && (
+            <div className="expert-chat">
+              <div className="expert-chat__label">שאל את המומחה</div>
+              <div className="expert-chat__row">
+                <input
+                  className="expert-chat__input"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
+                  placeholder={`שאלה על ${name}...`}
+                  dir="rtl"
+                  disabled={asking}
+                />
+                <button
+                  className="expert-chat__btn"
+                  onClick={handleAsk}
+                  disabled={asking || !question.trim()}
+                >
+                  {asking ? '⟳' : '→'}
+                </button>
+              </div>
+              {answer && (
+                <div className="expert-chat__answer" dir="rtl">{answer}</div>
+              )}
+            </div>
+          )}
         </div>
 
       </div>
