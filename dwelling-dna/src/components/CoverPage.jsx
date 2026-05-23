@@ -6,7 +6,7 @@ const CoverPage = forwardRef(function CoverPage(_props, ref) {
       {/* Video background */}
       <video
         className="cover-page__video"
-        src="/cover-video.mp4"
+        src={`${import.meta.env.BASE_URL}cover-video.mp4`}
         autoPlay
         muted
         loop
@@ -16,7 +16,7 @@ const CoverPage = forwardRef(function CoverPage(_props, ref) {
       {/* Cover image overlay */}
       <div
         className="cover-page__img"
-        style={{ backgroundImage: 'url(/cover.png)' }}
+        style={{ backgroundImage: `url(${import.meta.env.BASE_URL}cover.png)` }}
       />
 
       {/* Dark gradient overlay for text legibility */}
