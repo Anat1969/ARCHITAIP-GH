@@ -1,18 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Stable anonymous session id persisted in localStorage
-function getSessionId() {
-  const key = 'dwelling-dna:session';
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-  }
-  return id;
-}
-
-const SESSION_ID = getSessionId();
+const SESSION_ID = 'default';
 
 // ─────────────────────────────────────────
 // Last page

@@ -14,14 +14,7 @@ import {
 import { supabase } from './lib/supabase';
 import './App.css';
 
-// ─── session id ──────────────────────────────────────────────────────────────
-function getSessionId() {
-  const key = 'dwelling-dna:session';
-  let id = localStorage.getItem(key);
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem(key, id); }
-  return id;
-}
-const SESSION_ID = getSessionId();
+const SESSION_ID = 'default';
 
 function buildDefaultContent(c) {
   return { paragraph: c.paragraph, post: c.post };
