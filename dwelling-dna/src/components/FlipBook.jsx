@@ -109,7 +109,7 @@ const FlipBook = forwardRef(function FlipBook(
         startPage={startPage ?? 0}
         flippingTime={700}
         useMouseEvents={true}
-        swipeDistance={30}
+        swipeDistance={60}
         direction="rtl"
         className="flipbook"
       >

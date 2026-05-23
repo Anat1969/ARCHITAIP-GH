@@ -195,34 +195,40 @@ const CultureRight = forwardRef(function CultureRight({ culture, content, onCont
             onChange={handleChange('post')}
             placeholder="הוסף פוסט קצר..."
           />
+        </div>
 
-          {hasClaudeKey && (
-            <div className="expert-chat">
-              <div className="expert-chat__label">שאל את המומחה</div>
-              <div className="expert-chat__row">
-                <input
-                  className="expert-chat__input"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
-                  placeholder={`שאלה על ${name}...`}
-                  dir="rtl"
-                  disabled={asking}
-                />
-                <button
-                  className="expert-chat__btn"
-                  onClick={handleAsk}
-                  disabled={asking || !question.trim()}
-                >
-                  {asking ? '⟳' : '→'}
-                </button>
-              </div>
+        {hasClaudeKey && (
+          <div
+            className="expert-chat"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="expert-chat__label">שאל את המומחה</div>
+            <div className="expert-chat__body">
+              <textarea
+                className="expert-chat__textarea"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(); } }}
+                onMouseDown={(e) => e.stopPropagation()}
+                placeholder={`שאלה על ${name}...`}
+                dir="rtl"
+                disabled={asking}
+              />
               {answer && (
                 <div className="expert-chat__answer" dir="rtl">{answer}</div>
               )}
             </div>
-          )}
-        </div>
+            <button
+              className="expert-chat__btn"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={handleAsk}
+              disabled={asking || !question.trim()}
+            >
+              {asking ? '⟳ שואל...' : 'שאל את המומחה →'}
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import FlipBook from './components/FlipBook';
 import Navigation from './components/Navigation';
+import TypographyPanel from './components/TypographyPanel';
 import FusionModal from './components/FusionModal';
 import CultureModal from './components/CultureModal';
 import baseCultures from './data/cultures';
@@ -274,6 +275,7 @@ export default function App() {
         onNext={handleNext}
         onGoTo={handleGoTo}
       />
+      <TypographyPanel />
       {fusionModal && (
         <FusionModal
           cultures={allCultures}

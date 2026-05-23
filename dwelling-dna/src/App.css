@@ -204,8 +204,8 @@
   z-index: 1;
   height: 100%;
   display: grid;
-  grid-template-rows: auto auto auto auto 1fr;
-  padding: 20px 24px 16px;
+  grid-template-rows: auto auto auto auto auto 1fr;
+  padding: 20px 24px 12px;
   gap: 0;
   overflow: hidden;
 }
@@ -311,8 +311,9 @@
 .culture-right__paragraph {
   font-family: var(--font-ui);
   font-size: clamp(10px, 1.05vw, 12.5px);
+  font-weight: var(--ty-body-weight, 400);
   color: rgba(0,0,0,0.78);
-  line-height: 1.75;
+  line-height: var(--ty-line-height, 1.75);
   overflow: auto;
 }
 
@@ -710,14 +711,129 @@
   line-height: 1.35;
 }
 
-/* ── Expert Chat ─────────────────────────────────────────────── */
-.expert-chat {
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid rgba(0,0,0,0.1);
+/* ── Typography Toggle & Panel ──────────────────────────────── */
+.ty-toggle {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 200;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0,0,0,0.7);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  transition: box-shadow 0.15s;
+}
+.ty-toggle:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+
+.ty-panel {
+  position: fixed;
+  bottom: 60px;
+  left: 20px;
+  z-index: 200;
+  background: rgba(255,255,255,0.97);
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 8px;
+  padding: 14px 16px;
+  width: 240px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 10px;
+  font-family: var(--font-ui);
+}
+
+.ty-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ty-panel__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0,0,0,0.6);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.ty-panel__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: rgba(0,0,0,0.4);
+  padding: 2px 4px;
+}
+
+.ty-panel__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ty-panel__label {
+  font-size: 11px;
+  color: rgba(0,0,0,0.45);
+  font-family: var(--font-ui);
+}
+.ty-panel__control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ty-panel__control input[type=range] {
+  flex: 1;
+  height: 3px;
+  accent-color: #333;
+  cursor: pointer;
+}
+.ty-panel__hint { font-size: 10px; color: rgba(0,0,0,0.4); }
+.ty-panel__hint--lg { font-size: 15px; }
+.ty-panel__val { font-size: 11px; color: rgba(0,0,0,0.5); text-align: left; }
+
+.ty-panel__toggles { display: flex; gap: 5px; flex-wrap: wrap; }
+.ty-panel__w-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  background: rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  color: rgba(0,0,0,0.65);
+  transition: background 0.15s;
+}
+.ty-panel__w-btn--active {
+  background: rgba(0,0,0,0.12);
+  border-color: rgba(0,0,0,0.25);
+  color: rgba(0,0,0,0.9);
+}
+.ty-panel__reset {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  background: none;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: rgba(0,0,0,0.4);
+  margin-top: 2px;
+  text-align: center;
+}
+.ty-panel__reset:hover { color: rgba(0,0,0,0.7); }
+
+/* ── Expert Chat ─────────────────────────────────────────────── */
+.expert-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0,0,0,0.1);
+  min-height: 0;
+  cursor: text;
 }
 
 .expert-chat__label {
@@ -726,44 +842,61 @@
   color: rgba(0,0,0,0.38);
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
-.expert-chat__row {
+.expert-chat__body {
+  flex: 1;
   display: flex;
+  flex-direction: column;
   gap: 5px;
-  align-items: center;
+  min-height: 0;
 }
 
-.expert-chat__input {
+.expert-chat__textarea {
   flex: 1;
   font-family: var(--font-ui);
   font-size: var(--t-caption);
-  background: rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.65);
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 4px;
-  padding: 5px 8px;
+  padding: 8px 10px;
   color: rgba(0,0,0,0.85);
   outline: none;
   direction: rtl;
+  resize: none;
+  line-height: 1.6;
+  min-height: 60px;
 }
 
-.expert-chat__input:focus {
+.expert-chat__textarea:focus {
   border-color: var(--c-accent, rgba(0,0,0,0.3));
-  background: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.9);
+}
+
+.expert-chat__textarea:disabled {
+  opacity: 0.6;
 }
 
 .expert-chat__btn {
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--t-caption);
+  font-weight: 500;
   background: var(--c-accent, rgba(0,0,0,0.75));
   color: #fff;
   border: none;
   border-radius: 4px;
-  padding: 5px 10px;
+  padding: 7px 14px;
   cursor: pointer;
-  opacity: 0.85;
+  opacity: 0.88;
   transition: opacity 0.15s;
   flex-shrink: 0;
+  align-self: flex-end;
+  direction: rtl;
+}
+
+.expert-chat__btn:hover:not(:disabled) {
+  opacity: 1;
 }
 
 .expert-chat__btn:disabled {
@@ -775,11 +908,13 @@
   font-family: var(--font-ui);
   font-size: var(--t-caption);
   color: rgba(0,0,0,0.82);
-  line-height: 1.6;
+  line-height: 1.65;
   background: rgba(255,255,255,0.55);
   border-right: 2px solid var(--c-accent, rgba(0,0,0,0.2));
-  padding: 6px 8px;
+  padding: 7px 10px;
   border-radius: 0 4px 4px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
 /* ── Architectural DNA Interpretation ───────────────────────── */

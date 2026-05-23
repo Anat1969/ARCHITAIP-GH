@@ -9,15 +9,21 @@
   --font-display: 'Noto Serif Hebrew', 'Times New Roman', serif;
   --font-ui: 'Rubik', 'Arial Hebrew', Arial, sans-serif;
 
-  /* Typographic scale — fluid via clamp */
-  --t-meta:    clamp(8px, 0.75vw, 10px);
-  --t-caption: clamp(9px, 0.85vw, 11px);
-  --t-post:    clamp(11px, 1.1vw, 13px);
-  --t-body:    clamp(10px, 1vw, 12px);
-  --t-insight: clamp(13px, 1.4vw, 16px);
-  --t-chapter: clamp(32px, 5vw, 60px);
-  --t-hero:    clamp(32px, 4.5vw, 58px);
-  --t-cover:   clamp(60px, 10vw, 140px);
+  /* Typography editor controls */
+  --ty-scale: 1;
+  --ty-line-height: 1.7;
+  --ty-body-weight: 400;
+  --ty-heading-weight: 700;
+
+  /* Typographic scale — fluid via clamp, scaled by --ty-scale */
+  --t-meta:    calc(clamp(8px, 0.75vw, 10px) * var(--ty-scale));
+  --t-caption: calc(clamp(9px, 0.85vw, 11px) * var(--ty-scale));
+  --t-post:    calc(clamp(11px, 1.1vw, 13px) * var(--ty-scale));
+  --t-body:    calc(clamp(10px, 1vw, 12px) * var(--ty-scale));
+  --t-insight: calc(clamp(13px, 1.4vw, 16px) * var(--ty-scale));
+  --t-chapter: calc(clamp(32px, 5vw, 60px) * var(--ty-scale));
+  --t-hero:    calc(clamp(32px, 4.5vw, 58px) * var(--ty-scale));
+  --t-cover:   calc(clamp(60px, 10vw, 140px) * var(--ty-scale));
 }
 
 html {
