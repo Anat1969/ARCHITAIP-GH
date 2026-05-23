@@ -3,7 +3,7 @@ import SpaceCard from './SpaceCard';
 import PromptButton from './PromptButton';
 
 const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageChange, pageNum }, ref) {
-  const { id, colors, gradient, vectors } = culture;
+  const { id, colors, gradient, vectors, interpretation } = culture;
   const prompts = culture.prompts ?? [];
   const spaces  = culture.spaces  ?? [];
 
@@ -25,7 +25,7 @@ const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageCh
       {pageNum != null && <span className="page-num page-num--left">{pageNum}</span>}
       <div className="culture-left__inner">
 
-        {/* ── Row 1: Traditional spaces (images only, no copy buttons) ── */}
+        {/* ── Row 1: Traditional spaces ── */}
         <div className="culture-left__section-label">פרשנות מסורתית</div>
         <div className="culture-left__cards-row">
           {spaces.map((space, idx) => (
@@ -40,6 +40,22 @@ const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageCh
               generatePrompt={prompts[idx]?.text || space.caption}
             />
           ))}
+        </div>
+
+        {/* ── DNA Vectors (below traditional row) ── */}
+        <div className="culture-left__dna">
+          <div className="culture-left__dna-title">DNA וקטורים</div>
+          <div className="culture-left__vectors">
+            {Object.entries(vectors).map(([key, val]) => {
+              const labels = { material: 'חומר', light: 'אור', threshold: 'סף', proportion: 'פרופורציה', narrative: 'נרטיב' };
+              return (
+                <div key={key} className="culture-left__vector-row">
+                  <span className="culture-left__vector-key">{labels[key]}</span>
+                  <span className="culture-left__vector-val">{val}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── Row 2: Modern interpretation (images + copy buttons) ── */}
@@ -73,21 +89,13 @@ const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageCh
           </div>
         </div>
 
-        {/* ── DNA Vectors ── */}
-        <div className="culture-left__dna">
-          <div className="culture-left__dna-title">DNA וקטורים</div>
-          <div className="culture-left__vectors">
-            {Object.entries(vectors).map(([key, val]) => {
-              const labels = { material: 'חומר', light: 'אור', threshold: 'סף', proportion: 'פרופורציה', narrative: 'נרטיב' };
-              return (
-                <div key={key} className="culture-left__vector-row">
-                  <span className="culture-left__vector-key">{labels[key]}</span>
-                  <span className="culture-left__vector-val">{val}</span>
-                </div>
-              );
-            })}
+        {/* ── Architectural DNA Interpretation (below modern row) ── */}
+        {interpretation && (
+          <div className="culture-left__interpretation">
+            <div className="culture-left__interpretation-title">פרשנות ה-DNA האדריכלי</div>
+            <p className="culture-left__interpretation-text" dir="rtl">{interpretation}</p>
           </div>
-        </div>
+        )}
 
       </div>
     </div>

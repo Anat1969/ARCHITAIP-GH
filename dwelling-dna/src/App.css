@@ -699,6 +699,30 @@
   line-height: 1.35;
 }
 
+/* ── Architectural DNA Interpretation ───────────────────────── */
+.culture-left__interpretation {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+.culture-left__interpretation-title {
+  font-size: var(--t-meta);
+  color: rgba(0,0,0,0.4);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-family: var(--font-ui);
+  margin-bottom: 5px;
+  direction: rtl;
+}
+.culture-left__interpretation-text {
+  font-size: var(--t-caption);
+  color: rgba(0,0,0,0.78);
+  font-family: var(--font-ui);
+  line-height: 1.55;
+  margin: 0;
+}
+
 /* ── Archetype Triad ─────────────────────────────────────────── */
 .culture-left__archetype {
   display: flex;
