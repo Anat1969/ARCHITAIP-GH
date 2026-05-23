@@ -24,7 +24,8 @@ const TOCRight = forwardRef(function TOCRight(
                 key={c.id}
                 className="toc-page__item"
                 style={{ '--toc-accent': c.colors.accent }}
-                onClick={(e) => { e.stopPropagation(); onGoTo?.(culturePageNum(i)); }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); setTimeout(() => onGoTo?.(culturePageNum(i)), 50); }}
               >
                 <span className="toc-page__item-num">{String(i + 1).padStart(2, '0')}</span>
                 <span className="toc-page__item-name">{c.name}</span>

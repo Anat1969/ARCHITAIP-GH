@@ -20,7 +20,8 @@ const TOCLeft = forwardRef(function TOCLeft(
                   key={f.id}
                   className="toc-page__item"
                   style={{ '--toc-accent': f.colors.accent }}
-                  onClick={(e) => { e.stopPropagation(); onGoTo?.(fusionPageNum(i)); }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setTimeout(() => onGoTo?.(fusionPageNum(i)), 50); }}
                 >
                   <span className="toc-page__item-num">×</span>
                   <span className="toc-page__item-name">{f.name}</span>

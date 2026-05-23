@@ -102,22 +102,21 @@ const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageCh
   );
 });
 
-// Build a radical-minimalist modern reinterpretation prompt
+// Build a radical-minimalist modern reinterpretation prompt (English only)
 function buildModernPrompt(culture, prompt, idx) {
   const spaceTypes = ['exterior facade', 'threshold entrance', 'interior space'];
-  const archetypeMap = {
-    0: 'raw materiality, weight and mass',
-    1: 'liminal transition, passage and threshold',
-    2: 'communal gathering, spatial hierarchy',
-  };
-  const vectorCore = culture.vectors
-    ? Object.values(culture.vectors).slice(0, 2).join(', ')
-    : '';
+  const spaceThemes = [
+    'raw materiality, weight and mass, protective enclosure',
+    'liminal transition, passage and threshold, spatial compression',
+    'communal gathering, spatial hierarchy, shared void',
+  ];
+  const cultureId = culture.id || 'ancient';
 
   return `Radical minimalist contemporary architecture, ${spaceTypes[idx] || 'architectural space'}. ` +
-    `Core concept: ${culture.archetype || culture.role} — ${archetypeMap[idx] || ''}. ` +
-    `Distilled essence: ${vectorCore}. ` +
-    `Bare concrete, precision glass, structural steel. Zero ornament. Pure geometric abstraction. ` +
+    `Reinterpretation of ${cultureId} cultural archetype. ` +
+    `Spatial theme: ${spaceThemes[idx] || spaceThemes[0]}. ` +
+    `Reference essence: ${prompt.text}. ` +
+    `Translated into: bare concrete, precision glass, structural steel. Zero ornament. Pure geometric abstraction. ` +
     `Tadao Ando silence, Peter Zumthor materiality, Alvaro Siza light. ` +
     `2024 architecture, architectural photography, natural light, extreme minimalism, museum quality`;
 }

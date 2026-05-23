@@ -100,23 +100,11 @@ export default function SpaceCard({ spaceId, label, caption, gradient, imageUrl,
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="הדבק URL של תמונה..."
-            dir="rtl"
+            onBlur={handleApply}
+            placeholder="URL..."
+            dir="ltr"
           />
-          <button className="space-card__apply" onClick={handleApply}>
-            אישור
-          </button>
-          <button
-            className="space-card__cancel"
-            onClick={() => setEditing(false)}
-          >
-            ביטול
-          </button>
         </div>
-      )}
-
-      {!editing && !generating && (
-        <div className="space-card__hint">+ תמונה</div>
       )}
     </div>
   );
