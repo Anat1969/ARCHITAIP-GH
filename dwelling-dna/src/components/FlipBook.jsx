@@ -1,5 +1,6 @@
-import { forwardRef, useRef, useImperativeHandle, useEffect, useCallback } from 'react';
+import { forwardRef, useRef, useState, useImperativeHandle, useEffect, useCallback } from 'react';
 import HTMLFlipBook from 'react-pageflip';
+import PageCorner from './PageCorner';
 import CoverPage from './CoverPage';
 import BackCover from './BackCover';
 import TOCRight from './TOCRight';
@@ -24,6 +25,9 @@ import FusionRight from './FusionRight';
 //  8+nC*2+i*2: FusionLeft[i]
 //  7+nC*2+nF*2: BackCover
 
+const PAGE_WIDTH = 560;
+const PAGE_HEIGHT = 760;
+
 const FlipBook = forwardRef(function FlipBook(
   {
     cultures, contentMap, imagesMap, onPageChange, onContentChange, onImageChange,
@@ -35,15 +39,20 @@ const FlipBook = forwardRef(function FlipBook(
 ) {
   const bookRef = useRef(null);
   const nCultures = cultures.length;
+  const [page, setPage] = useState(startPage ?? 0);
+
+  const flipNext = useCallback(() => bookRef.current?.pageFlip()?.flipNext(), []);
+  const flipPrev = useCallback(() => bookRef.current?.pageFlip()?.flipPrev(), []);
 
   useImperativeHandle(ref, () => ({
-    flipNext: () => bookRef.current?.pageFlip()?.flipNext(),
-    flipPrev: () => bookRef.current?.pageFlip()?.flipPrev(),
+    flipNext,
+    flipPrev,
     flip: (n) => bookRef.current?.pageFlip()?.flip(n),
     getCurrentPage: () => bookRef.current?.pageFlip()?.getCurrentPageIndex() ?? 0,
   }));
 
   const handleFlip = useCallback((e) => {
+    setPage(e.data);
     onPageChange?.(e.data);
   }, [onPageChange]);
 
@@ -95,12 +104,21 @@ const FlipBook = forwardRef(function FlipBook(
     />,
   ]);
 
+  const totalPages = 8 + nCultures * 2 + (fusions?.length ?? 0) * 2;
+
   return (
     <div className="flipbook-container">
+      {/* The stage carries the book's own size: react-pageflip measures its
+          parent and drops to a single page when that box is narrower than a
+          two-page spread. */}
+      <div
+        className="flipbook-stage"
+        style={{ width: PAGE_WIDTH * 2, height: PAGE_HEIGHT }}
+      >
       <HTMLFlipBook
         ref={bookRef}
-        width={560}
-        height={760}
+        width={PAGE_WIDTH}
+        height={PAGE_HEIGHT}
         size="fixed"
         maxShadowOpacity={0.5}
         showCover={true}
@@ -108,9 +126,9 @@ const FlipBook = forwardRef(function FlipBook(
         onFlip={handleFlip}
         startPage={startPage ?? 0}
         flippingTime={700}
-        useMouseEvents={true}
-        swipeDistance={60}
+        useMouseEvents={false}
         direction="rtl"
+        disableFlipByClick={true}
         className="flipbook"
       >
         <CoverPage key="cover" />
@@ -135,6 +153,13 @@ const FlipBook = forwardRef(function FlipBook(
         {fusionPages}
         <BackCover key="back" />
       </HTMLFlipBook>
+
+        {/* The library's own drag zone is a ~190px square in every corner, which
+            swallows clicks on whatever sits there. These are the flip handles
+            instead: small, visible, and nowhere near the page content. */}
+        <PageCorner side="next" onFlip={flipNext} disabled={page >= totalPages - 1} />
+        <PageCorner side="prev" onFlip={flipPrev} disabled={page <= 0} />
+      </div>
     </div>
   );
 });

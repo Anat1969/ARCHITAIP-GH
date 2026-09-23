@@ -1,11 +1,6 @@
 import { useState } from 'react';
-import Anthropic from '@anthropic-ai/sdk';
+import { askClaude } from '../lib/claude';
 import { parseClaudeJson } from '../lib/parseClaudeJson';
-
-const anthropic = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
 
 function blendHex(a, b, t = 0.5) {
   const parse = (h) => {
@@ -91,12 +86,10 @@ export default function FusionModal({ cultures, fusions, onClose, onCreate }) {
         `תרבות ${i+1} (${p.name}): chaos="${p.chaos}", order="${p.order}", role="${p.role}", vectors=${JSON.stringify(p.vectors)}`
       ).join('\n');
 
-      const response = await anthropic.messages.create({
-        model: 'claude-opus-4-7',
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: `אתה מומחה ארכיטקטורה תרבותית. צור מיזוג ${modeLabel} בין: ${selected.map(p=>p.name).join(' + ')}.
+      const text = await askClaude({
+        model: 'claude-opus-5',
+        maxTokens: 8000,
+        prompt: `אתה מומחה ארכיטקטורה תרבותית. צור מיזוג ${modeLabel} בין: ${selected.map(p=>p.name).join(' + ')}.
 משקלים: ${weightsStr}.
 
 ${parentsPrompt}
@@ -121,10 +114,8 @@ ${parentsPrompt}
     {"caption":"תיאור עברי קצר — מרחב קהילתי"}
   ]
 }`,
-        }],
       });
 
-      const text = response.content[0]?.text ?? '';
       const data = parseClaudeJson(text);
 
       // Safe defaults

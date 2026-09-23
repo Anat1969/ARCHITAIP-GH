@@ -1,11 +1,5 @@
 import { forwardRef, useState, useRef, useCallback } from 'react';
-import Anthropic from '@anthropic-ai/sdk';
-import PromptButton from './PromptButton';
-
-const anthropic = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
+import { askClaude, claudeReady } from '../lib/claude';
 
 function EditableField({ value, onChange, multiline, className, placeholder }) {
   const [editing, setEditing] = useState(false);
@@ -76,60 +70,30 @@ const EXPERT_SYSTEM = `שם: Expert Analyst - Cultural Deep Dive
 כללים: אל תוסיף "כאשר..." או "כנראה...". אל תמצטט מאפליקציה בעצמך. אם לא בטוח — תגיד "לא בטוח" בקצרה.`;
 
 const CultureRight = forwardRef(function CultureRight({ culture, content, onContentChange, pageNum }, ref) {
-  const { id, index, name, archetype, chaos, order, role, colors, gradient, insight, prompts } = culture;
-  const [generatedPrompts, setGeneratedPrompts] = useState(null);
-  const [generating, setGenerating] = useState(false);
+  const { id, index, name, archetype, chaos, order, role, colors, gradient, insight } = culture;
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [asking, setAsking] = useState(false);
-  const hasClaudeKey = !!import.meta.env.VITE_ANTHROPIC_API_KEY;
+  const hasClaudeKey = claudeReady;
 
   const handleChange = useCallback((field) => (val) => {
     onContentChange?.({ [field]: val });
   }, [onContentChange]);
-
-  const handleGeneratePrompts = async () => {
-    setGenerating(true);
-    try {
-      const response = await anthropic.messages.create({
-        model: 'claude-opus-4-7',
-        max_tokens: 800,
-        messages: [{
-          role: 'user',
-          content: `צור 3 פרומפטים באנגלית ליצירת תמונות AI עבור התרבות הארכיטקטונית: ${name}.
-הארכיטייפ: ${archetype}.
-כל פרומפט צריך לתאר מרחב ארכיטקטוני ספציפי (פרטי, מעבר, ציבורי) בסגנון התרבות.
-החזר JSON בלבד: [{"label":"מרחב פרטי","text":"..."},{"label":"מרחב מעבר","text":"..."},{"label":"מרחב ציבורי","text":"..."}]`,
-        }],
-      });
-      const text = response.content[0]?.text ?? '';
-      const match = text.match(/\[[\s\S]*\]/);
-      if (match) {
-        setGeneratedPrompts(JSON.parse(match[0]));
-      }
-    } catch (err) {
-      console.error('Claude error:', err);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const activePrompts = generatedPrompts || prompts;
 
   const handleAsk = async () => {
     if (!question.trim() || asking) return;
     setAsking(true);
     setAnswer('');
     try {
-      const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 150,
+      const text = await askClaude({
+        model: 'claude-haiku-4-5',
+        maxTokens: 2048,
         system: `${EXPERT_SYSTEM}\n\nהקשר: השאלה מתייחסת לתרבות "${name}" — ארכיטייפ: ${archetype}. כאוס: ${chaos}. סדר: ${order}. תפקיד: ${role}.`,
-        messages: [{ role: 'user', content: question.trim() }],
+        prompt: question.trim(),
       });
-      setAnswer(response.content[0]?.text ?? '');
-    } catch {
-      setAnswer('שגיאה בחיבור למומחה.');
+      setAnswer(text);
+    } catch (err) {
+      setAnswer(err.message || 'שגיאה בחיבור למומחה.');
     } finally {
       setAsking(false);
     }

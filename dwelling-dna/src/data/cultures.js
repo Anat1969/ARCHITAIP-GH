@@ -54,6 +54,25 @@ export const cultures = [
         text: 'Interior of ancient Sumerian mud-brick throne room, low ceiling pressing down, massive thick walls, single shaft of harsh light from high opening, packed earth floor, no decoration only weight and mass, oppressive atmosphere of order imposed, cinematic photography',
       },
     ],
+    // The same three spaces, projected forward: each one carries a single
+    // Mesopotamian principle into a built future, never a period reconstruction.
+    modern: [
+      {
+        label: 'חוץ',
+        caption: 'מסה מודפסת — זיגורט אקלימי',
+        text: 'Speculative architecture of the next century, exterior, standing on a cracked alluvial plain. A low broad stepped mass, robot-extruded from local excavated earth in visible printed strata, terraces thickening toward the ground, mass used as climate armour rather than ornament. Almost blind on the sun side; a few deep recessed slots. Matte earth tones of ochre and sienna against dark photovoltaic ceramic. Hard horizontal desert light, long flat shadows, dust in the air, dark weather gathering at the edge of frame. The ancient principle distilled: gravity, thickness, a daily declaration against chaos. Architectural photography, wide angle, no people, no ruins, no historical reconstruction.',
+      },
+      {
+        label: 'סף',
+        caption: 'שער מגן — הסף כמסננת',
+        text: 'Speculative architecture of the next century, threshold. An entrance cut as a deep canyon through a thick earth-and-composite wall, several metres of mass to pass before arriving: the gate reinterpreted as a filtering passage rather than an invitation. Monolithic jambs, one precise incision of daylight along the seam, cool machine glow deeper inside. Dust-filtering louvres in dark ceramic, a single human figure dwarfed by the section. Sharp chiaroscuro, desert haze, weight and protection over welcome. Contemporary speculative architecture, no ornament, no ancient motifs, architectural photography.',
+      },
+      {
+        label: 'פנים',
+        caption: 'תא כובד — חדר שנושם אדמה',
+        text: 'Speculative architecture of the next century, interior. A low compressed room inside a very thick printed-earth shell, ceiling pressing down, walls curving into the floor as one continuous mass, thermal depth felt rather than shown. One harsh shaft of daylight from a high slot cuts across a polished rammed-earth floor; everything else is quiet shadow and warm dust. No decoration whatsoever — only weight, enclosure and the sense of order held by effort. Subtle embedded technology, hairline joints, matte surfaces. Cinematic photography, natural light, extreme restraint, contemporary, not a museum set.',
+      },
+    ],
   },
 
   {

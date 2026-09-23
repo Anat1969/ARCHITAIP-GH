@@ -31,6 +31,7 @@ const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageCh
           {spaces.map((space, idx) => (
             <SpaceCard
               key={space.id}
+              cultureId={id}
               spaceId={space.id}
               label={space.label}
               caption={space.caption}
@@ -63,13 +64,14 @@ const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageCh
         <div className="culture-left__row">
           <div className="culture-left__cards-row">
             {prompts.map((p, idx) => {
-              const modernPrompt = buildModernPrompt(culture, p, idx);
+              const modernPrompt = buildModernPrompt(culture, idx, p.text);
               return (
                 <SpaceCard
                   key={`prompt_${idx}`}
+                  cultureId={id}
                   spaceId={`prompt_${idx}`}
                   label={p.label}
-                  caption=""
+                  caption={modernEntry(culture, idx)?.caption ?? ''}
                   gradient={gradient}
                   imageUrl={images?.[`prompt_${idx}`]}
                   onImageChange={onImageChange}
@@ -83,7 +85,7 @@ const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageCh
               <PromptButton
                 key={`m_${p.label}`}
                 label={p.label}
-                text={buildModernPrompt(culture, p, idx)}
+                text={buildModernPrompt(culture, idx, p.text)}
               />
             ))}
           </div>
@@ -102,23 +104,41 @@ const CultureLeft = forwardRef(function CultureLeft({ culture, images, onImageCh
   );
 });
 
-// Build a radical-minimalist modern reinterpretation prompt (English only)
-function buildModernPrompt(culture, prompt, idx) {
-  const spaceTypes = ['exterior facade', 'threshold entrance', 'interior space'];
-  const spaceThemes = [
-    'raw materiality, weight and mass, protective enclosure',
-    'liminal transition, passage and threshold, spatial compression',
-    'communal gathering, spatial hierarchy, shared void',
-  ];
-  const cultureId = culture.id || 'ancient';
+/**
+ * The prompt for the future half of the spread.
+ *
+ * A culture can carry its own hand-written `modern` set — a distilled reading
+ * always beats a formula. Everything else falls back to the builder below,
+ * which hands the model the ancestral logic to carry forward instead of the
+ * ancient prompt to restage: quoting the period description was what kept
+ * returning a dressed-up reconstruction rather than a projection.
+ */
+function modernEntry(culture, idx) {
+  return culture.modern?.[idx] ?? null;
+}
 
-  return `Radical minimalist contemporary architecture, ${spaceTypes[idx] || 'architectural space'}. ` +
-    `Reinterpretation of ${cultureId} cultural archetype. ` +
-    `Spatial theme: ${spaceThemes[idx] || spaceThemes[0]}. ` +
-    `Reference essence: ${prompt.text}. ` +
-    `Translated into: bare concrete, precision glass, structural steel. Zero ornament. Pure geometric abstraction. ` +
-    `Tadao Ando silence, Peter Zumthor materiality, Alvaro Siza light. ` +
-    `2024 architecture, architectural photography, natural light, extreme minimalism, museum quality`;
+function buildModernPrompt(culture, idx, ancientText = '') {
+  const own = modernEntry(culture, idx);
+  if (own?.text) return own.text;
+
+  const spaceTypes = ['exterior', 'threshold', 'interior'];
+  const spaceThemes = [
+    'mass, enclosure, and how the building meets the ground',
+    'the passage inward — compression, filtering, arrival',
+    'the inhabited room — light, proportion, and what the space asks of the body',
+  ];
+
+  // English throughout: the culture's own fields are Hebrew, and Hebrew inside
+  // an image prompt comes back as noise. The ancestral description carries the
+  // substance instead, framed as logic to carry forward rather than to restage.
+  return `Speculative architecture of the next century, ${spaceTypes[idx] || 'architectural space'}. ` +
+    `Spatial focus: ${spaceThemes[idx] || spaceThemes[0]}. ` +
+    `Inherited logic to distil — "${ancientText}" — keep its spatial reasoning (weight, light, sequence, proportion) ` +
+    `and discard every period motif, ornament, ruin and costume. ` +
+    `Rebuild it with the means of a future era: robot-fabricated local matter, earth and mass-timber composites, ` +
+    `embedded climate skins, hairline joints, zero decoration. ` +
+    `Not a historical reconstruction and not a museum set. ` +
+    `Architectural photography, natural light, restrained palette, quiet monumental atmosphere.`;
 }
 
 export default CultureLeft;

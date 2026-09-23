@@ -21,8 +21,78 @@
   padding-bottom: 72px; /* space for nav */
 }
 
+.flipbook-stage {
+  position: relative;
+  display: inline-flex;
+}
+
 .flipbook {
   box-shadow: 0 30px 80px rgba(0,0,0,0.8);
+}
+
+/* ── Page corner: the flip handle ────────────────────────────── */
+.page-corner {
+  position: absolute;
+  bottom: 0;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  z-index: 40;
+  touch-action: none;
+}
+
+/* The hit area is the fold, not its bounding box, so the square around the
+   triangle never swallows a click meant for the page. It reaches a little past
+   the drawn fold on purpose: the centre of the visible triangle sits right on
+   the diagonal, and a click aimed there must not fall outside. */
+.page-corner--next {
+  left: 0;
+  clip-path: polygon(0 100%, 135% 100%, 0 -35%);
+}
+
+.page-corner--prev {
+  right: 0;
+  clip-path: polygon(100% 100%, -35% 100%, 100% -35%);
+}
+
+.page-corner:disabled {
+  cursor: default;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.page-corner__fold {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transition: transform 0.25s ease, filter 0.25s ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.28));
+}
+
+.page-corner--next .page-corner__fold {
+  clip-path: polygon(0 100%, 100% 100%, 0 0);
+  background: linear-gradient(45deg, rgba(0,0,0,0.16) 0%, rgba(0,0,0,0.05) 45%, rgba(255,255,255,0.9) 100%);
+  transform-origin: bottom left;
+}
+
+.page-corner--prev .page-corner__fold {
+  clip-path: polygon(100% 100%, 0 100%, 100% 0);
+  background: linear-gradient(-45deg, rgba(0,0,0,0.16) 0%, rgba(0,0,0,0.05) 45%, rgba(255,255,255,0.9) 100%);
+  transform-origin: bottom right;
+}
+
+.page-corner:hover .page-corner__fold,
+.page-corner--lifted .page-corner__fold {
+  transform: scale(1.22);
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+.page-corner:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.5);
+  outline-offset: 2px;
 }
 
 /* ── Page Base ───────────────────────────────────────────────── */
@@ -867,6 +937,14 @@
   resize: none;
   line-height: 1.6;
   min-height: 60px;
+  user-select: text;
+  pointer-events: auto;
+}
+
+.page textarea,
+.page input {
+  user-select: text;
+  pointer-events: auto;
 }
 
 .expert-chat__textarea:focus {
@@ -893,6 +971,8 @@
   flex-shrink: 0;
   align-self: flex-end;
   direction: rtl;
+  /* Clear of the page-turn fold in the bottom corner. */
+  margin-left: 52px;
 }
 
 .expert-chat__btn:hover:not(:disabled) {

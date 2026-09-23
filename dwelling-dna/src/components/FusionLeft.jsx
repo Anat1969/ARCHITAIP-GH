@@ -26,6 +26,7 @@ const FusionLeft = forwardRef(function FusionLeft({ fusion, images, onImageChang
           {(spaces ?? []).map((space, idx) => (
             <SpaceCard
               key={space.id}
+              cultureId={fusion.id}
               spaceId={space.id}
               label={space.label}
               caption={space.caption}

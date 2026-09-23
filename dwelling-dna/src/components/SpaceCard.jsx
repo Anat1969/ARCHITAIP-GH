@@ -1,9 +1,7 @@
 import { useState, useRef } from 'react';
-import { fal } from '@fal-ai/client';
+import { generateImage, falReady } from '../lib/falImage';
 
-fal.config({ credentials: import.meta.env.VITE_FAL_API_KEY });
-
-export default function SpaceCard({ spaceId, label, caption, gradient, imageUrl, onImageChange, generatePrompt }) {
+export default function SpaceCard({ cultureId, spaceId, label, caption, gradient, imageUrl, onImageChange, generatePrompt }) {
   const [editing, setEditing] = useState(false);
   const [inputVal, setInputVal] = useState(imageUrl || '');
   const [generating, setGenerating] = useState(false);
@@ -33,23 +31,11 @@ export default function SpaceCard({ spaceId, label, caption, gradient, imageUrl,
     setGenerating(true);
     setGenError(null);
     try {
-      const result = await fal.subscribe('fal-ai/flux/schnell', {
-        input: {
-          prompt: generatePrompt,
-          image_size: 'landscape_4_3',
-          num_inference_steps: 4,
-          num_images: 1,
-        },
-      });
-      const url = result?.data?.images?.[0]?.url;
-      if (url) {
-        onImageChange?.(spaceId, url);
-        setInputVal(url);
-      } else {
-        setGenError('לא התקבלה תמונה');
-      }
+      const url = await generateImage(generatePrompt, { cultureId, spaceId });
+      onImageChange?.(spaceId, url);
+      setInputVal(url);
     } catch (err) {
-      setGenError('שגיאה ביצירה');
+      setGenError(err.message || 'שגיאה ביצירה');
       console.error('FAL error:', err);
     } finally {
       setGenerating(false);
@@ -68,7 +54,7 @@ export default function SpaceCard({ spaceId, label, caption, gradient, imageUrl,
         <span className="space-card__caption">{caption}</span>
       </div>
 
-      {!editing && !generating && generatePrompt && import.meta.env.VITE_FAL_API_KEY && (
+      {!editing && !generating && generatePrompt && falReady && (
         <button
           className="space-card__gen-btn"
           onClick={handleGenerate}

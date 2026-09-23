@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Anthropic from '@anthropic-ai/sdk';
+import { askClaude } from '../lib/claude';
 import { parseClaudeJson } from '../lib/parseClaudeJson';
 
 function GeneratingOverlay({ name }) {
@@ -16,11 +16,6 @@ function GeneratingOverlay({ name }) {
     </div>
   );
 }
-
-const anthropic = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
 
 function slugify(name) {
   return name.trim().replace(/\s+/g, '_').replace(/[^\w]/g, '').toLowerCase() || 'culture';
@@ -40,12 +35,10 @@ export default function CultureModal({ onClose, onCreate }) {
     setError(null);
 
     try {
-      const response = await anthropic.messages.create({
-        model: 'claude-opus-4-7',
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: `אתה מומחה ארכיטקטורה תרבותית. צור פרופיל ארכיטקטוני מלא עבור:
+      const text = await askClaude({
+        model: 'claude-opus-5',
+        maxTokens: 8000,
+        prompt: `אתה מומחה ארכיטקטורה תרבותית. צור פרופיל ארכיטקטוני מלא עבור:
 שם: ${name}${period ? `\nתקופה: ${period}` : ''}${region ? `\nאזור: ${region}` : ''}${description ? `\nתיאור: ${description}` : ''}
 
 החזר JSON בלבד ללא הסברים:
@@ -63,7 +56,7 @@ export default function CultureModal({ onClose, onCreate }) {
     "proportion": "תפיסת הפרופורציה",
     "narrative": "הנרטיב הארכיטקטוני"
   },
-  "insight": "\"ציטוט מרכזי מייצג בעברית\"",
+  "insight": "ציטוט מרכזי מייצג בעברית (ללא מרכאות)",
   "paragraph": "תיאור ארוך 3-4 משפטים בעברית",
   "post": "משפט ביטויי קצר בעברית",
   "spaces": [
@@ -77,10 +70,8 @@ export default function CultureModal({ onClose, onCreate }) {
     {"label":"פנים","text":"English AI image prompt for interior space..."}
   ]
 }`,
-        }],
       });
 
-      const text = response.content[0]?.text ?? '';
       const data = parseClaudeJson(text);
 
       // Ensure required fields have safe defaults

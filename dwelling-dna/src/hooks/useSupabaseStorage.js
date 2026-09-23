@@ -12,7 +12,7 @@ export function useLastPage(defaultPage = 0) {
 
   useEffect(() => {
     supabase
-      .from('app_state')
+      .from('architaip_app_state')
       .select('last_page')
       .eq('session_id', SESSION_ID)
       .maybeSingle()
@@ -24,7 +24,7 @@ export function useLastPage(defaultPage = 0) {
 
   const setPage = useCallback((p) => {
     setPageState(p);
-    supabase.from('app_state').upsert(
+    supabase.from('architaip_app_state').upsert(
       { session_id: SESSION_ID, last_page: p, updated_at: new Date().toISOString() },
       { onConflict: 'session_id' },
     );
@@ -42,7 +42,7 @@ export function useCultureContent(cultureId, defaults) {
   useEffect(() => {
     if (!cultureId) return;
     supabase
-      .from('culture_content')
+      .from('architaip_culture_content')
       .select('content')
       .eq('culture_id', cultureId)
       .eq('session_id', SESSION_ID)
@@ -57,7 +57,8 @@ export function useCultureContent(cultureId, defaults) {
   const setContent = useCallback((updater) => {
     setContentState((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
-      supabase.from('culture_content').upsert(
+      // The builder is lazy — it has to be awaited to send anything.
+      supabase.from('architaip_culture_content').upsert(
         {
           culture_id: cultureId,
           session_id: SESSION_ID,
@@ -65,7 +66,7 @@ export function useCultureContent(cultureId, defaults) {
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'culture_id,session_id' },
-      );
+      ).then(({ error }) => { if (error) console.error('save content:', error); });
       return next;
     });
   }, [cultureId]);
@@ -82,7 +83,7 @@ export function useCultureImages(cultureId, defaults) {
   useEffect(() => {
     if (!cultureId) return;
     supabase
-      .from('culture_images')
+      .from('architaip_culture_images')
       .select('images')
       .eq('culture_id', cultureId)
       .eq('session_id', SESSION_ID)
@@ -97,7 +98,7 @@ export function useCultureImages(cultureId, defaults) {
   const setImages = useCallback((updater) => {
     setImagesState((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
-      supabase.from('culture_images').upsert(
+      supabase.from('architaip_culture_images').upsert(
         {
           culture_id: cultureId,
           session_id: SESSION_ID,
@@ -105,7 +106,7 @@ export function useCultureImages(cultureId, defaults) {
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'culture_id,session_id' },
-      );
+      ).then(({ error }) => { if (error) console.error('save images:', error); });
       return next;
     });
   }, [cultureId]);
@@ -117,7 +118,7 @@ export function useCultureImages(cultureId, defaults) {
 // Custom cultures
 // ─────────────────────────────────────────
 export async function saveCustomCulture(culture) {
-  const { error } = await supabase.from('cultures').upsert({
+  const { error } = await supabase.from('architaip_cultures').upsert({
     ...cultureToRow(culture),
     is_custom: true,
   });
@@ -126,7 +127,7 @@ export async function saveCustomCulture(culture) {
 
 export async function loadCustomCultures() {
   const { data, error } = await supabase
-    .from('cultures')
+    .from('architaip_cultures')
     .select('*')
     .eq('is_custom', true)
     .order('created_at', { ascending: true });
@@ -135,7 +136,7 @@ export async function loadCustomCultures() {
 }
 
 export async function deleteCustomCulture(id) {
-  const { error } = await supabase.from('cultures').delete().eq('id', id);
+  const { error } = await supabase.from('architaip_cultures').delete().eq('id', id);
   if (error) console.error('deleteCustomCulture:', error);
 }
 
@@ -143,13 +144,13 @@ export async function deleteCustomCulture(id) {
 // Fusions
 // ─────────────────────────────────────────
 export async function saveFusion(fusion) {
-  const { error } = await supabase.from('fusions').upsert(fusionToRow(fusion));
+  const { error } = await supabase.from('architaip_fusions').upsert(fusionToRow(fusion));
   if (error) console.error('saveFusion:', error);
 }
 
 export async function loadFusions() {
   const { data, error } = await supabase
-    .from('fusions')
+    .from('architaip_fusions')
     .select('*')
     .order('created_at', { ascending: true });
   if (error) { console.error('loadFusions:', error); return []; }
@@ -157,7 +158,7 @@ export async function loadFusions() {
 }
 
 export async function deleteFusion(id) {
-  const { error } = await supabase.from('fusions').delete().eq('id', id);
+  const { error } = await supabase.from('architaip_fusions').delete().eq('id', id);
   if (error) console.error('deleteFusion:', error);
 }
 

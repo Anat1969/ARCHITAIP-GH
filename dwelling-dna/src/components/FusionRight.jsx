@@ -54,7 +54,7 @@ function EditableField({ value, onChange, multiline, className, placeholder }) {
 }
 
 const FusionRight = forwardRef(function FusionRight({ fusion, content, onContentChange, onDelete, pageNum }, ref) {
-  const { id, name, lineage, colors, gradient, insight } = fusion;
+  const { id, lineage, colors, gradient, insight } = fusion;
   const parentNames = lineage.parent_names;
   const modeLabel = { equal: 'שווה', weighted: 'משוקלל', dominant: 'דומיננטי' }[lineage.fusion_logic] || lineage.fusion_logic;
 

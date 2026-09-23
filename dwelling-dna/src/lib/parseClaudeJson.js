@@ -34,8 +34,9 @@ export function parseClaudeJson(text) {
 
   try {
     return JSON.parse(json);
-  } catch (e) {
+  } catch {
     // Last resort: try to remove problematic characters
+    // eslint-disable-next-line no-control-regex -- stripping stray control characters is intentional
     const stripped = json.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '');
     return JSON.parse(stripped);
   }

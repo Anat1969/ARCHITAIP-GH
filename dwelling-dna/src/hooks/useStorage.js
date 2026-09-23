@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 const PREFIX = 'dwelling-dna';
 
@@ -23,6 +23,11 @@ function save(key, value) {
   }
 }
 
+function merge(key, defaults) {
+  const stored = load(key, null);
+  return stored !== null ? { ...defaults, ...stored } : defaults;
+}
+
 export function useLastPage(defaultPage = 0) {
   const key = getKey('lastPage');
   const [page, setPageState] = useState(() => load(key, defaultPage));
@@ -35,43 +40,33 @@ export function useLastPage(defaultPage = 0) {
   return [page, setPage];
 }
 
-export function useCultureContent(cultureId, defaults) {
-  const key = getKey('content', cultureId);
-  const [content, setContentState] = useState(() => load(key, defaults));
+/**
+ * Keyed state backed by localStorage. When the key changes (a different
+ * culture), the state is re-derived during render instead of inside an effect —
+ * that avoids the extra render pass a setState-in-useEffect causes.
+ */
+function useKeyedStorage(key, defaults) {
+  const [state, setState] = useState(() => ({ key, value: merge(key, defaults) }));
 
-  // Sync defaults into state when cultureId changes
-  useEffect(() => {
-    const stored = load(key, null);
-    setContentState(stored !== null ? { ...defaults, ...stored } : defaults);
-  }, [cultureId]); // eslint-disable-line
+  if (state.key !== key) {
+    setState({ key, value: merge(key, defaults) });
+  }
 
-  const setContent = useCallback((updater) => {
-    setContentState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
-      save(key, next);
-      return next;
+  const update = useCallback((updater) => {
+    setState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev.value) : { ...prev.value, ...updater };
+      save(prev.key, next);
+      return { key: prev.key, value: next };
     });
-  }, [key]);
+  }, []);
 
-  return [content, setContent];
+  return [state.value, update];
+}
+
+export function useCultureContent(cultureId, defaults) {
+  return useKeyedStorage(getKey('content', cultureId), defaults);
 }
 
 export function useCultureImages(cultureId, defaults) {
-  const key = getKey('images', cultureId);
-  const [images, setImagesState] = useState(() => load(key, defaults));
-
-  useEffect(() => {
-    const stored = load(key, null);
-    setImagesState(stored !== null ? { ...defaults, ...stored } : defaults);
-  }, [cultureId]); // eslint-disable-line
-
-  const setImages = useCallback((updater) => {
-    setImagesState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
-      save(key, next);
-      return next;
-    });
-  }, [key]);
-
-  return [images, setImages];
+  return useKeyedStorage(getKey('images', cultureId), defaults);
 }

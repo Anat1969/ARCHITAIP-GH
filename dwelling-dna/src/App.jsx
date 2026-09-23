@@ -31,13 +31,13 @@ function buildFusionDefaultImages(f) {
 }
 
 async function upsertContent(cultureId, content) {
-  await supabase.from('culture_content').upsert(
+  await supabase.from('architaip_culture_content').upsert(
     { culture_id: cultureId, session_id: SESSION_ID, content, updated_at: new Date().toISOString() },
     { onConflict: 'culture_id,session_id' },
   );
 }
 async function upsertImages(cultureId, images) {
-  await supabase.from('culture_images').upsert(
+  await supabase.from('architaip_culture_images').upsert(
     { culture_id: cultureId, session_id: SESSION_ID, images, updated_at: new Date().toISOString() },
     { onConflict: 'culture_id,session_id' },
   );
@@ -77,8 +77,8 @@ export default function App() {
       const cultureIds = baseCultures.map(c => c.id);
 
       const [{ data: contentRows }, { data: imageRows }] = await Promise.all([
-        supabase.from('culture_content').select('culture_id,content').in('culture_id', cultureIds).eq('session_id', SESSION_ID),
-        supabase.from('culture_images').select('culture_id,images').in('culture_id', cultureIds).eq('session_id', SESSION_ID),
+        supabase.from('architaip_culture_content').select('culture_id,content').in('culture_id', cultureIds).eq('session_id', SESSION_ID),
+        supabase.from('architaip_culture_images').select('culture_id,images').in('culture_id', cultureIds).eq('session_id', SESSION_ID),
       ]);
 
       const loaded = {};
@@ -95,8 +95,8 @@ export default function App() {
       if (cc.length) {
         const ccIds = cc.map(c => c.id);
         const [{ data: ccContent }, { data: ccImages }] = await Promise.all([
-          supabase.from('culture_content').select('culture_id,content').in('culture_id', ccIds).eq('session_id', SESSION_ID),
-          supabase.from('culture_images').select('culture_id,images').in('culture_id', ccIds).eq('session_id', SESSION_ID),
+          supabase.from('architaip_culture_content').select('culture_id,content').in('culture_id', ccIds).eq('session_id', SESSION_ID),
+          supabase.from('architaip_culture_images').select('culture_id,images').in('culture_id', ccIds).eq('session_id', SESSION_ID),
         ]);
         cc.forEach((c) => {
           const row = ccContent?.find(r => r.culture_id === c.id);
@@ -115,8 +115,8 @@ export default function App() {
       if (loadedFusions.length) {
         const fIds = loadedFusions.map(f => f.id);
         const [{ data: fContent }, { data: fImages }] = await Promise.all([
-          supabase.from('culture_content').select('culture_id,content').in('culture_id', fIds).eq('session_id', SESSION_ID),
-          supabase.from('culture_images').select('culture_id,images').in('culture_id', fIds).eq('session_id', SESSION_ID),
+          supabase.from('architaip_culture_content').select('culture_id,content').in('culture_id', fIds).eq('session_id', SESSION_ID),
+          supabase.from('architaip_culture_images').select('culture_id,images').in('culture_id', fIds).eq('session_id', SESSION_ID),
         ]);
         const fc = {};
         const fi = {};
@@ -133,16 +133,25 @@ export default function App() {
 
       // Load last page from Supabase
       const { data: stateRow } = await supabase
-        .from('app_state').select('last_page').eq('session_id', SESSION_ID).maybeSingle();
+        .from('architaip_app_state').select('last_page').eq('session_id', SESSION_ID).maybeSingle();
       if (stateRow) setStartPage(stateRow.last_page);
 
       setReady(true);
     }
 
-    loadAll().catch(err => {
-      console.error('loadAll failed:', err);
-      setReady(true); // render anyway with defaults
-    });
+    // The book must open even when the backend is unreachable. Every page has
+    // built-in content to fall back on, and a request that never settles is no
+    // reason to leave the reader on a loading screen.
+    const openAnyway = setTimeout(() => setReady(true), 5000);
+
+    loadAll()
+      .catch(err => console.error('loadAll failed:', err))
+      .finally(() => {
+        clearTimeout(openAnyway);
+        setReady(true);
+      });
+
+    return () => clearTimeout(openAnyway);
   }, []);
 
   // After FlipBook remounts (flipKey changes), navigate to pending page
@@ -156,10 +165,15 @@ export default function App() {
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handlePageChange = useCallback((p) => {
     setCurrentPage(p);
-    supabase.from('app_state').upsert(
-      { session_id: SESSION_ID, last_page: p, updated_at: new Date().toISOString() },
-      { onConflict: 'session_id' },
-    );
+    // A Supabase builder only sends its request once something awaits it —
+    // without this the last page was never actually saved.
+    supabase
+      .from('architaip_app_state')
+      .upsert(
+        { session_id: SESSION_ID, last_page: p, updated_at: new Date().toISOString() },
+        { onConflict: 'session_id' },
+      )
+      .then(({ error }) => { if (error) console.error('save last page:', error); });
   }, []);
 
   const handleContentChange = useCallback((cultureId, updates) => {
@@ -214,8 +228,10 @@ export default function App() {
     setFusionContentMap(prev => { const n = { ...prev }; delete n[fusionId]; return n; });
     setFusionImagesMap(prev => { const n = { ...prev }; delete n[fusionId]; return n; });
     deleteFusion(fusionId);
-    supabase.from('culture_content').delete().eq('culture_id', fusionId).eq('session_id', SESSION_ID);
-    supabase.from('culture_images').delete().eq('culture_id', fusionId).eq('session_id', SESSION_ID);
+    supabase.from('architaip_culture_content').delete().eq('culture_id', fusionId).eq('session_id', SESSION_ID)
+      .then(({ error }) => { if (error) console.error('delete fusion content:', error); });
+    supabase.from('architaip_culture_images').delete().eq('culture_id', fusionId).eq('session_id', SESSION_ID)
+      .then(({ error }) => { if (error) console.error('delete fusion images:', error); });
     setFlipKey(k => k + 1);
   }, []);
 
