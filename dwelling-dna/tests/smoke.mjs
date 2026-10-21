@@ -36,6 +36,8 @@ async function mock(page, admin) {
       return json({ text: isFusion ? FUSION_JSON : 'תשובת מומחה קצרה.' });
     }
     if (url.pathname.startsWith('/auth/v1/user')) return json({ id: 'u1', email: 'shtanat5@gmail.com' });
+    if (url.pathname.startsWith('/auth/v1/settings')) return json({ external: { google: false, email: true } });
+    if (url.pathname.startsWith('/auth/v1/otp')) return json({});
     if (url.pathname.startsWith('/storage/v1/object/')) return json({ Key: 'x' });
     return json({});
   });
@@ -71,6 +73,20 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   check(await page.locator('.tile').count() === 11, 'home shows 11 culture tiles');
   check(await page.locator('text=כניסת עורכת').first().isVisible(), 'reader sees editor login');
   check(await page.locator('text=העתקת קישור').first().isVisible(), 'copy link button in bar');
+
+  // Login: Google hidden while the server has it off, email link + code instead
+  await page.locator('.topbar__actions .bar-btn', { hasText: 'כניסת עורכת' }).click();
+  await page.waitForSelector('.dialog');
+  await page.waitForTimeout(300);
+  check(!(await page.locator('text=כניסה עם Google').count()), 'Google hidden when disabled on server');
+  await page.locator('.dialog input[type=email]').fill('shtanat5@gmail.com');
+  requests.length = 0;
+  await page.locator('.dialog button[type=submit]').click();
+  await page.waitForSelector('text=קוד מהמייל');
+  check(requests.some((r) => r.path.includes('/auth/v1/otp') && r.body.includes('shtanat5')), 'email login sends OTP');
+  await page.screenshot({ path: `${OUT}/login.png` });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
   check(await page.locator('text=שיחת הפיתוח').first().isVisible(), 'dev chat button in bar');
 
   // Atlas tab writes to URL
