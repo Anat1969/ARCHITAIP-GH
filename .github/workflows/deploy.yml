@@ -1,4 +1,7 @@
-name: Deploy to GitHub Pages
+name: Redirect GitHub Pages to Vercel
+
+# The magazine now lives on Vercel. The old Pages address stays alive only to
+# send readers - and any saved deep link - to the same page there.
 
 on:
   push:
@@ -17,21 +20,25 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Install dependencies
-        working-directory: dwelling-dna
-        run: npm install
-      - name: Build
-        working-directory: dwelling-dna
-        env:
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-        run: npm run build
+      - name: Build redirect page
+        run: |
+          mkdir -p out
+          cat > out/index.html <<'HTML'
+          <!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">
+          <title>ארכיטייפ עבר לכתובת חדשה</title>
+          <script>
+            var p = location.pathname.replace(/^\/ARCHITAIP-GH/, '') || '/';
+            location.replace('https://architaip.vercel.app' + p + location.search + location.hash);
+          </script>
+          <meta http-equiv="refresh" content="0; url=https://architaip.vercel.app/">
+          </head><body style="font-family:sans-serif;padding:40px">
+          המגזין עבר אל <a href="https://architaip.vercel.app/">architaip.vercel.app</a>
+          </body></html>
+          HTML
+          cp out/index.html out/404.html
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dwelling-dna/dist
+          path: out
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -48,9 +48,38 @@ function readKey(): string | undefined {
   return undefined;
 }
 
+/**
+ * Only the magazine's editor may spend model credits. The caller's session
+ * token is checked against Supabase Auth, and the email against
+ * architaip_admins - the same list the table policies read.
+ */
+async function isAdmin(req: Request): Promise<boolean> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+  if (!supabaseUrl || !serviceKey || !token) return false;
+  try {
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
+    });
+    if (!userRes.ok) return false;
+    const email = String((await userRes.json())?.email ?? '').toLowerCase();
+    if (!email) return false;
+    const rows = await fetch(
+      `${supabaseUrl}/rest/v1/architaip_admins?select=email&email=eq.${encodeURIComponent(email)}`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    ).then((r) => r.json());
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+
+  if (!(await isAdmin(req))) return json({ error: 'admin only' }, 403);
 
   const apiKey = readKey();
   if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY is not configured on the server' }, 500);
