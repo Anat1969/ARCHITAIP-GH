@@ -3,7 +3,7 @@
  * The API key stays on the server — nothing secret is bundled into the site.
  */
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
+import { SUPABASE_URL, functionHeaders } from './supabase';
 
 export const CLAUDE_ENDPOINT = SUPABASE_URL
   ? `${SUPABASE_URL.replace(/\/+$/, '')}/functions/v1/architaip-claude`
@@ -29,15 +29,11 @@ export async function askClaude({ model = 'claude-opus-5', maxTokens = 8000, sys
   try {
     response = await fetch(CLAUDE_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
+      headers: await functionHeaders(),
       body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: prompt }] }),
     });
   } catch {
-    throw new Error('אין חיבור לשירות ה-AI — בדקי את החיבור לאינטרנט, או שהפונקציה architaip-claude עדיין לא הותקנה בשרת.');
+    throw new Error('אין חיבור לשירות ה-AI. בדקי את החיבור לאינטרנט.');
   }
 
   const data = await response.json().catch(() => null);
@@ -51,8 +47,9 @@ export async function askClaude({ model = 'claude-opus-5', maxTokens = 8000, sys
 }
 
 function describeError(status, message) {
+  if (status === 403 && message === 'admin only') return 'רק העורכת המחוברת יכולה להפעיל את המומחה.';
   if (status === 401 || status === 403) {
-    return 'מפתח ה-API של Claude בשרת אינו תקף. יש להגדיר מפתח חדש ב-Supabase.';
+    return 'מפתח ה-API של Claude בשרת אינו תקף.';
   }
   if (status === 404) {
     return 'שירות המומחה עדיין לא הותקן בשרת. יש להריץ: supabase functions deploy architaip-claude';

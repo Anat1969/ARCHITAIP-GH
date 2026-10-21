@@ -3,7 +3,7 @@
  * The fal.ai credentials stay on the server.
  */
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
+import { SUPABASE_URL, functionHeaders } from './supabase';
 
 export const FAL_ENDPOINT = SUPABASE_URL
   ? `${SUPABASE_URL.replace(/\/+$/, '')}/functions/v1/architaip-fal-image`
@@ -23,20 +23,17 @@ export async function generateImage(prompt, { cultureId, spaceId } = {}) {
   try {
     response = await fetch(FAL_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
+      headers: await functionHeaders(),
       body: JSON.stringify({ prompt, cultureId, spaceId }),
     });
   } catch {
-    throw new Error('אין חיבור לשירות יצירת התמונות — ייתכן שהפונקציה architaip-fal-image עדיין לא הותקנה בשרת.');
+    throw new Error('אין חיבור לשירות יצירת התמונות.');
   }
 
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (data?.error === 'admin only') throw new Error('רק העורכת המחוברת יכולה ליצור תמונות.');
     if (response.status === 401 || response.status === 403) {
       throw new Error('מפתח fal.ai בשרת אינו תקף.');
     }

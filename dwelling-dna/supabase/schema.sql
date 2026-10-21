@@ -1,3 +1,12 @@
+-- NOTE: the live tables carry an architaip_ prefix and admin-only write
+-- policies (see architaip_admins and architaip_is_admin() below). This file is
+-- the original shape, kept for reference.
+--
+-- create table architaip_admins (email text primary key, created_at timestamptz default now());
+-- create function architaip_is_admin() returns boolean  -- email in jwt is listed in architaip_admins
+-- every insert/update/delete policy on architaip_* and on storage bucket
+-- architaip-media checks architaip_is_admin(); select stays public.
+
 -- DWELLING DNA — Supabase Schema
 -- Run this in the Supabase SQL Editor
 
