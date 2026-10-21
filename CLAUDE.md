@@ -15,5 +15,9 @@ GitHub Pages הישן מפנה לכתובת החדשה בלבד.
 ## בדיקה לפני דחיפה
 `npm run lint && npm run build`, ואז `npx vite preview --port 4173 &` ו-`CHROME=/opt/pw-browsers/chromium npm run test:e2e`.
 
+## פריסה
+- מיזוג ל-main לא תמיד מפעיל פריסה ב-Vercel. אחרי מיזוג לבדוק `list_deployments` עם `branch: main`, ואם אין, `create_deployment` עם `gitSource` של main ו-`target: production`.
+- Google כבוי ב-Supabase המשותף. הכניסה היא קישור או קוד במייל. כפתור Google מופיע לבד כשהוא יופעל.
+
 ## מיזוג
 ענת אישרה מיזוג קבוע ל-main אחרי בדיקה ירוקה.
