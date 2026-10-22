@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Dialog from './Dialog';
 import { loadProviders, useAuth } from '../store/auth';
 
-export default function LoginDialog({ onClose }) {
+export default function LoginDialog({ reason, onClose }) {
   const { signInWithGoogle, signInWithEmail, verifyCode } = useAuth();
   const [providers, setProviders] = useState(null);
   const [email, setEmail] = useState('');
@@ -41,7 +41,11 @@ export default function LoginDialog({ onClose }) {
 
   return (
     <Dialog title="כניסת עורכת" eyebrow="EDITOR ACCESS" onClose={onClose}>
-      <p className="muted">הקריאה פתוחה לכולם. עריכה, יצירת תמונות ומיזוגים שמורים לעורכת.</p>
+      {reason === 'image' ? (
+        <p className="notice notice--sent">התמונה כבר במסגרת ונשמרה בדפדפן הזה. אחרי הכניסה היא תעלה לשרת לבד, וכל מי שיפתח את המגזין יראה אותה.</p>
+      ) : (
+        <p className="muted">הקריאה פתוחה לכולם. עריכה, יצירת תמונות ומיזוגים שמורים לעורכת. כניסה אחת בכל מכשיר מספיקה.</p>
+      )}
       {providers?.google && (
         <>
           <button type="button" className="btn btn--primary btn--block" onClick={google} disabled={state.kind === 'busy'}>

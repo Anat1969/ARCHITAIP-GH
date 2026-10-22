@@ -2,9 +2,14 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { copyText } from '../lib/clipboard';
+import { useImageDrop } from '../lib/useImageDrop';
+import { useData } from '../store/data';
 
-export default function Lightbox({ item, imageUrl, entryName, onClose, onStep }) {
+export default function Lightbox({ item, imageUrl, entryId, entryName, onClose, onStep }) {
   const [copied, setCopied] = useState(false);
+  const { attachImage, isPending } = useData();
+  // While the lightbox is open, a paste anywhere lands in the space it shows.
+  const drop = useImageDrop((got) => attachImage(entryId, item.slot, got), { always: true });
 
   useEffect(() => {
     const onKey = (e) => {
@@ -35,9 +40,13 @@ export default function Lightbox({ item, imageUrl, entryName, onClose, onStep })
         transition={{ type: 'spring', stiffness: 220, damping: 26 }}
       >
         <div
-          className="lightbox__image"
+          className={`lightbox__image${drop.over ? ' lightbox__image--over' : ''}`}
           style={imageUrl ? { backgroundImage: `url("${imageUrl}")` } : { background: item.gradient }}
-        />
+          {...drop.props}
+        >
+          {!imageUrl && <span className="lightbox__drop">גררי או הדביקי כאן תמונה (Ctrl+V)</span>}
+          {isPending(entryId, item.slot) && <span className="frame__badge mono">ממתין לשמירה</span>}
+        </div>
         <aside className="lightbox__side">
           <div className="mono muted">{entryName} / {item.row === 'modern' ? 'PROJECTION' : 'ANCESTRAL'} / {item.kind.en}</div>
           <h3 className="lightbox__title">{item.kind.label}</h3>

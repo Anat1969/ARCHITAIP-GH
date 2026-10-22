@@ -104,11 +104,12 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.screenshot({ path: `${OUT}/culture.png` });
   await page.locator('.transfer').screenshot({ path: `${OUT}/transfer.png` });
   check(await page.locator('.frame').count() === 6, 'six space frames (ancestral + projection)');
-  check(await page.locator('.chip', { hasText: 'יצירה' }).count() === 0, 'reader has no generate buttons');
+  check(await page.locator('.chip', { hasText: 'העלאת תמונה' }).count() === 6, 'every frame offers upload, signed in or not');
+  check(await page.locator('.frame__drop').count() === 6, 'empty frames invite drag and paste');
   check(await page.locator('.editable').count() === 0, 'reader has no editable fields');
 
   // Lightbox with URL state
-  await page.locator('.frame__image').first().click();
+  await page.locator('.frame .chip', { hasText: 'הגדלה' }).first().click();
   await page.waitForSelector('.lightbox');
   check(page.url().includes('space=private'), 'lightbox writes space to URL');
   await page.screenshot({ path: `${OUT}/lightbox.png` });
@@ -161,7 +162,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForSelector('.entry-hero__name');
   await page.waitForSelector('text=מצב עריכה');
   check(true, 'admin session shows edit mode');
-  check(await page.locator('.chip', { hasText: 'יצירה' }).count() === 6, 'editor sees generate on every frame');
+  check(await page.locator('.chip', { hasText: 'יצירה ב-AI' }).count() === 6, 'editor sees generate on every frame');
 
   // Edit paragraph inline
   requests.length = 0;
@@ -175,7 +176,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 
   // Generate image
   requests.length = 0;
-  await page.locator('.chip', { hasText: 'יצירה' }).first().click();
+  await page.locator('.chip', { hasText: 'יצירה ב-AI' }).first().click();
   await page.waitForTimeout(800);
   check(requests.some((r) => r.path.includes('architaip-fal-image')), 'generate calls image function');
   const imgWrite = requests.find((r) => r.method === 'POST' && r.path.includes('architaip_culture_images'));
@@ -195,7 +196,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 
   // Toggle to reading mode
   await page.locator('.topbar__actions .bar-btn', { hasText: 'מצב עריכה' }).click();
-  check(await page.locator('.chip', { hasText: 'יצירה' }).count() === 0, 'reading mode hides editor tools');
+  check(await page.locator('.reading__paragraph.editable').count() === 0, 'reading mode hides text editing');
   await page.locator('.topbar__actions .bar-btn', { hasText: 'מצב קריאה' }).click();
 
   // Fusion: compare, generate, approve
@@ -228,6 +229,85 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const dlgTop = await page.locator('.dialog').evaluate((el) => el.getBoundingClientRect().top);
   check(dlgTop >= 59, 'dialog opens beneath the top bar');
   await page.screenshot({ path: `${OUT}/add-culture.png` });
+  await ctx.close();
+}
+
+// ── Images: drop and paste, before and after sign-in ──
+{
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push(e.message));
+  await mock(page, false);
+  await page.goto(BASE + '/c/persia');
+  await page.waitForSelector('.frame__image');
+
+  const dropOn = (index) => page.evaluate(({ index, b64 }) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], 'x.png', { type: 'image/png' }));
+    const el = document.querySelectorAll('.frame')[index];
+    el.dispatchEvent(new DragEvent('dragenter', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    el.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+  }, { index, b64: PNG });
+
+  // Reader drops: the image shows at once, waits, and sign-in opens
+  await dropOn(0);
+  await page.waitForSelector('text=ממתין לשמירה');
+  const bg = await page.locator('.frame__image').first().evaluate((el) => el.style.backgroundImage);
+  check(bg.includes('blob:'), 'dropped image shows immediately in the frame');
+  await page.waitForSelector('.dialog');
+  check(await page.locator('text=התמונה כבר במסגרת').isVisible(), 'sign-in opens and explains the image is kept');
+  await page.screenshot({ path: `${OUT}/drop-pending.png` });
+  await page.keyboard.press('Escape');
+
+  // Paste onto a hovered frame
+  await page.locator('.frame__image').nth(1).hover();
+  await page.evaluate((b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], 'y.png', { type: 'image/png' }));
+    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, PNG);
+  await page.waitForTimeout(500);
+  check(await page.locator('.frame__badge').count() === 2, 'pasted image lands in the hovered frame');
+
+  // Survives reload, then uploads once signed in
+  await page.reload();
+  await page.waitForSelector('.frame__image');
+  await page.waitForTimeout(500);
+  check(await page.locator('.frame__badge').count() === 2, 'waiting images survive a reload');
+  requests.length = 0;
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  await mock(page, true);
+  await page.goto(BASE + '/c/persia');
+  await page.waitForSelector('text=מצב עריכה');
+  await page.waitForTimeout(1500);
+  const uploads = requests.filter((r) => r.method === 'POST' && r.path.includes('/storage/v1/object/architaip-media/persia/'));
+  check(uploads.length === 2, `waiting images upload after sign-in (${uploads.length})`);
+  const saves = requests.filter((r) => r.method === 'POST' && r.path.includes('architaip_culture_images'));
+  const last = saves.at(-1)?.body ?? '';
+  check(last.includes('"private"') && last.includes('"threshold"') && last.includes('storage/v1/object/public'), 'both images saved together, neither overwrites the other');
+  check(await page.locator('.frame__badge').count() === 0, 'pending badges clear after saving');
+
+  // Signed in: a drop saves straight away
+  requests.length = 0;
+  await dropOn(3);
+  await page.waitForTimeout(1200);
+  check(requests.some((r) => r.path.includes('/storage/v1/object/architaip-media/persia/prompt_0')), 'editor drop uploads directly');
+
+  // Lightbox takes a paste too
+  await page.goto(BASE + '/c/persia?space=prompt_2');
+  await page.waitForSelector('.lightbox');
+  requests.length = 0;
+  await page.evaluate((b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], 'z.png', { type: 'image/png' }));
+    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, PNG);
+  await page.waitForTimeout(1200);
+  check(requests.some((r) => r.path.includes('/persia/prompt_2')), 'paste in the lightbox fills that space');
   await ctx.close();
 }
 

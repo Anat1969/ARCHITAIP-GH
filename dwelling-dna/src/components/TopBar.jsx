@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Mark from './Mark';
-import LoginDialog from './LoginDialog';
 import { useAuth } from '../store/auth';
 import { useData } from '../store/data';
 import { useInstallPrompt } from '../lib/install';
@@ -11,12 +10,11 @@ import { copyText } from '../lib/clipboard';
 export const DEV_CHAT_URL = 'https://claude.ai/code/session_01VVH7JDffbMQREYfT2YAiLB';
 
 export default function TopBar() {
-  const { isAdmin, editing, setEditMode, user, signOut } = useAuth();
+  const { isAdmin, editing, setEditMode, user, signOut, openLogin } = useAuth();
   const { save } = useData();
   const { canInstall, install } = useInstallPrompt();
   const [copied, setCopied] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [login, setLogin] = useState(false);
 
   const copyLink = async () => {
     await copyText(window.location.href);
@@ -46,7 +44,7 @@ export default function TopBar() {
       {user ? (
         <button type="button" className="bar-btn bar-btn--quiet" onClick={signOut} title={user.email}>יציאה</button>
       ) : (
-        <button type="button" className="bar-btn bar-btn--quiet" onClick={() => setLogin(true)}>כניסת עורכת</button>
+        <button type="button" className="bar-btn bar-btn--quiet" onClick={() => openLogin()}>כניסת עורכת</button>
       )}
     </>
   );
@@ -99,7 +97,6 @@ export default function TopBar() {
           )}
         </AnimatePresence>
       </header>
-      <AnimatePresence>{login && <LoginDialog onClose={() => setLogin(false)} />}</AnimatePresence>
     </>
   );
 }

@@ -11,6 +11,9 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [adminFor, setAdminFor] = useState(null); // user id the admin check passed for
   const [editMode, setEditMode] = useState(true);
+  // The sign-in dialog belongs to the whole app: a frame that receives an image
+  // before sign-in opens it with its own reason.
+  const [loginReason, setLoginReason] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -56,7 +59,8 @@ export function AuthProvider({ children }) {
   const value = useMemo(() => ({
     session, user: session?.user ?? null, isAdmin, editing: isAdmin && editMode,
     setEditMode, signInWithGoogle, signInWithEmail, verifyCode, signOut,
-  }), [session, isAdmin, editMode, signInWithGoogle, signInWithEmail, verifyCode, signOut]);
+    loginReason, openLogin: (reason = 'default') => setLoginReason(reason), closeLogin: () => setLoginReason(null),
+  }), [session, isAdmin, editMode, signInWithGoogle, signInWithEmail, verifyCode, signOut, loginReason]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

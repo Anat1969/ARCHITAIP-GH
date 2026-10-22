@@ -473,3 +473,18 @@ p { margin: 0; }
 @media print {
   .triad__node, .dna-cell, .stage__page, .tile, .frame { opacity: 1 !important; transform: none !important; }
 }
+
+/* ── Frames take images: drop, paste, pick ── */
+.frame__drop { position: relative; z-index: 1; display: grid; gap: 6px; justify-items: center; text-align: center; padding: 18px; margin: 14px; border: 1.5px dashed rgba(255,255,255,.55); border-radius: 12px; color: #fff; background: rgba(0,0,0,.18); backdrop-filter: blur(2px); transition: background .2s, border-color .2s; }
+.frame__image:hover .frame__drop { background: rgba(0,0,0,.32); border-color: #fff; }
+.frame__drop-title { font-size: 17px; font-weight: 500; }
+.frame__drop-sub { font-size: 13px; color: rgba(255,255,255,.85); }
+.frame--over .frame__image { box-shadow: 0 0 0 3px var(--c3, var(--ink)), var(--shadow-2); }
+.frame__over { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; font-size: 20px; color: #fff; background: rgba(10,9,8,.55); backdrop-filter: blur(3px); }
+.frame__badge { position: absolute; top: 10px; inset-inline-start: 10px; z-index: 1; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.9); color: var(--ink); font-size: 10px; }
+.frame__tools { opacity: 1; }
+
+.lightbox__image { position: relative; display: grid; place-items: center; }
+.lightbox__image--over { box-shadow: 0 0 0 3px #fff, 0 40px 120px rgba(0,0,0,.6); }
+.lightbox__drop { padding: 18px 24px; border: 1.5px dashed rgba(255,255,255,.6); border-radius: 12px; background: rgba(0,0,0,.25); font-size: 17px; }
+@media print { .frame__drop, .frame__badge { display: none !important; } }

@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import TopBar from './components/TopBar';
+import LoginDialog from './components/LoginDialog';
+import { useAuth } from './store/auth';
 import Home from './pages/Home';
 import EntryPage from './pages/EntryPage';
 import Lab from './pages/Lab';
@@ -26,6 +28,7 @@ function ReadStart() {
 
 export default function App() {
   const location = useLocation();
+  const { loginReason, closeLogin } = useAuth();
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, [location.pathname]);
 
@@ -54,6 +57,7 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <AnimatePresence>{loginReason && <LoginDialog reason={loginReason} onClose={closeLogin} />}</AnimatePresence>
     </div>
   );
 }
