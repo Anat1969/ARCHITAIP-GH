@@ -362,6 +362,21 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await ctx.close();
 }
 
+// ── PDF: every culture on exactly one A4 page ──
+{
+  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  await mock(page, false);
+  for (const id of ['mesopotamia', 'egypt', 'india', 'china', 'maya', 'israel', 'persia', 'greece', 'celtic', 'japan', 'africa']) {
+    await page.goto(`${BASE}/c/${id}`);
+    await page.waitForSelector('.print-sheet', { state: 'attached' });
+    const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+    const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+    check(pages === 1, `PDF ${id}: one A4 page (${pages})`);
+  }
+  await ctx.close();
+}
+
 // ── Installability needs a real profile, not an incognito context ──
 {
   const ctx = await chromium.launchPersistentContext(fs.mkdtempSync('/tmp/pw-'), CHROME ? { executablePath: CHROME } : {});
