@@ -9,6 +9,7 @@ import Lightbox from '../components/Lightbox';
 import ExpertChat from '../components/ExpertChat';
 import { VECTORS, pad2, spreadRows } from '../lib/dna';
 import NotFound from './NotFound';
+import PrintSheet from '../components/PrintSheet';
 
 const LAST_READ = 'architaip:last';
 
@@ -87,12 +88,27 @@ export default function EntryPage({ kind }) {
     entry: get(pid),
   })) : [];
 
+  // The PDF is named after the culture rather than the site.
+  // Images on the sheet finish loading first, or the PDF shows empty frames.
+  const printSheet = async () => {
+    const imgs = [...document.querySelectorAll('.print-sheet img')];
+    await Promise.race([
+      Promise.all(imgs.map((im) => (im.complete ? null : new Promise((r) => { im.onload = r; im.onerror = r; })))),
+      new Promise((r) => setTimeout(r, 4000)),
+    ]);
+    const title = document.title;
+    document.title = `DWELLING_DNA_${entry.name}`;
+    window.print();
+    setTimeout(() => { document.title = title; }, 500);
+  };
+
   const fullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen?.();
   };
 
   return (
+    <>
     <article className="entry" style={tone} dir="rtl">
       {/* ── Opening: the name as image ── */}
       <header className="entry-hero">
@@ -115,7 +131,7 @@ export default function EntryPage({ kind }) {
           <Editable as="blockquote" className="entry-hero__insight" value={entry.insight} onSave={save('insight')} multiline placeholder="תובנה" />
           <div className="entry-hero__tools no-print">
             <button type="button" className="bar-btn bar-btn--glass" onClick={fullscreen}>מצב הצגה</button>
-            <button type="button" className="bar-btn bar-btn--glass" onClick={() => window.print()}>ייצוא PDF</button>
+            <button type="button" className="bar-btn bar-btn--glass" onClick={printSheet}>ייצוא PDF</button>
             {!isFusion && <Link className="bar-btn bar-btn--glass" to={`/lab?p=${entry.id}`}>למזג עם תרבות אחרת</Link>}
             {editing && (isFusion || entry.isCustom) && (
               <button
@@ -268,5 +284,7 @@ export default function EntryPage({ kind }) {
         )}
       </AnimatePresence>
     </article>
+    <PrintSheet entry={entry} rows={rows} images={img} total={list.length} />
+    </>
   );
 }
