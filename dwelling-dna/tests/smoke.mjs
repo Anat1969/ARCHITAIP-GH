@@ -9,6 +9,7 @@ const CHROME = process.env.CHROME;
 fs.mkdirSync(OUT, { recursive: true });
 
 const REF = 'ktqmwpbzcnzkhjskqisy';
+const TEST_KEY = 'test-editor-key-0123456789';
 const requests = [];
 const errors = [];
 let failures = 0;
@@ -25,8 +26,16 @@ async function mock(page, admin) {
   await page.route(`https://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const url = new URL(req.url());
-    requests.push({ method: req.method(), path: url.pathname, body: req.postData() });
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (url.pathname.includes('/functions/v1/architaip-edit')) {
+      // Recorded as /edit/<action> so the checks below read like the app's intent.
+      const body = JSON.parse(req.postData() || '{}');
+      requests.push({ method: 'POST', path: `/edit/${body.action}`, body: req.postData() });
+      if (req.headers()['x-editor-key'] !== TEST_KEY) return json({ error: 'not editor' }, 403);
+      if (body.action === 'sign_upload') return json({ path: body.path, token: 'signed-token' });
+      return json({ ok: true });
+    }
+    requests.push({ method: req.method(), path: url.pathname, body: req.postData() });
     if (url.pathname.startsWith('/rest/v1/rpc/architaip_is_admin')) return json(admin);
     if (url.pathname.startsWith('/rest/v1/')) return req.method() === 'GET' ? json([]) : json([], 201);
     if (url.pathname.includes('/functions/v1/architaip-fal-image')) return json({ url: 'https://example.com/gen.jpg', permanent: true });
@@ -37,19 +46,13 @@ async function mock(page, admin) {
     }
     if (url.pathname.startsWith('/auth/v1/user')) return json({ id: 'u1', email: 'shtanat5@gmail.com' });
     if (url.pathname.startsWith('/auth/v1/settings')) return json({ external: { google: false, email: true } });
-    if (url.pathname.startsWith('/auth/v1/otp')) return json({});
-    if (url.pathname.startsWith('/storage/v1/object/')) return json({ Key: 'x' });
+    if (url.pathname.startsWith('/storage/v1/object/')) return json({ Key: 'x', path: 'x' });
     return json({});
   });
   await page.route('https://example.com/**', (r) => r.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg"/>' }));
   if (admin) {
-    await page.addInitScript((ref) => {
-      const exp = Math.floor(Date.now() / 1000) + 3600 * 24;
-      localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify({
-        access_token: 'fake', refresh_token: 'fake', token_type: 'bearer', expires_in: 86400, expires_at: exp,
-        user: { id: 'u1', email: 'shtanat5@gmail.com', aud: 'authenticated', role: 'authenticated' },
-      }));
-    }, REF);
+    // The editor's device: the key it received from the editor link.
+    await page.addInitScript((key) => localStorage.setItem('architaip:editor', key), TEST_KEY);
   }
 }
 
@@ -71,22 +74,29 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForSelector('.cover__title');
   await page.screenshot({ path: `${OUT}/home.png` });
   check(await page.locator('.tile').count() === 11, 'home shows 11 culture tiles');
-  check(await page.locator('text=כניסת עורכת').first().isVisible(), 'reader sees editor login');
+  check(await page.locator('text=מצב עורכת').first().isVisible(), 'reader sees editor access');
   check(await page.locator('text=העתקת קישור').first().isVisible(), 'copy link button in bar');
 
-  // Login: Google hidden while the server has it off, email link + code instead
-  await page.locator('.topbar__actions .bar-btn', { hasText: 'כניסת עורכת' }).click();
+  // Editor access: no email, no password - the editor link, pasted once
+  await page.locator('.topbar__actions .bar-btn', { hasText: 'מצב עורכת' }).click();
   await page.waitForSelector('.dialog');
   await page.waitForTimeout(300);
   check(!(await page.locator('text=כניסה עם Google').count()), 'Google hidden when disabled on server');
-  await page.locator('.dialog input[type=email]').fill('shtanat5@gmail.com');
-  requests.length = 0;
-  await page.locator('.dialog button[type=submit]').click();
-  await page.waitForSelector('text=קוד מהמייל');
-  check(requests.some((r) => r.path.includes('/auth/v1/otp') && r.body.includes('shtanat5')), 'email login sends OTP');
+  check(!(await page.locator('.dialog input[type=email]').count()), 'no email field');
   await page.screenshot({ path: `${OUT}/login.png` });
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(400);
+  await page.locator('.dialog input').fill('https://architaip.vercel.app/#editor=wrong-key-000000000000');
+  await page.locator('.dialog button[type=submit]').click();
+  await page.waitForSelector('text=הקישור לא מוכר');
+  check(true, 'unknown editor link is refused');
+  await page.locator('.dialog input').fill(`https://architaip.vercel.app/#editor=${TEST_KEY}`);
+  await page.locator('.dialog button[type=submit]').click();
+  await page.waitForSelector('text=מצב עריכה');
+  await page.waitForTimeout(600);
+  check(!(await page.locator('.dialog').count()), 'pasting the editor link turns this device into an editor');
+  await page.locator('.topbar__actions .bar-btn', { hasText: 'יציאה ממצב עורכת' }).click();
+  await page.waitForSelector('text=מצב עורכת');
+  check(await page.evaluate(() => !localStorage.getItem('architaip:editor')), 'leaving editor mode forgets the key');
+
   check(await page.locator('text=שיחת הפיתוח').first().isVisible(), 'dev chat button in bar');
 
   // Atlas tab writes to URL
@@ -170,7 +180,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.locator('textarea.editable--open').fill('טקסט חדש לבדיקה');
   await page.locator('.mechanism h2').click();
   await page.waitForTimeout(500);
-  const contentWrite = requests.find((r) => r.method === 'POST' && r.path.includes('architaip_culture_content'));
+  const contentWrite = requests.find((r) => r.path === '/edit/content');
   check(contentWrite && contentWrite.body.includes('טקסט חדש לבדיקה') && contentWrite.body.includes('greece'), 'paragraph edit upserts content');
   check((await page.locator('.reading__paragraph').innerText()).includes('טקסט חדש'), 'edited text shows on page');
 
@@ -179,7 +189,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.locator('.chip', { hasText: 'יצירה ב-AI' }).first().click();
   await page.waitForTimeout(800);
   check(requests.some((r) => r.path.includes('architaip-fal-image')), 'generate calls image function');
-  const imgWrite = requests.find((r) => r.method === 'POST' && r.path.includes('architaip_culture_images'));
+  const imgWrite = requests.find((r) => r.path === '/edit/images');
   check(imgWrite && imgWrite.body.includes('gen.jpg'), 'generated image is saved');
   check(await page.locator('text=התמונה נשמרה').isVisible(), 'save state shows in bar');
 
@@ -211,7 +221,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.screenshot({ path: `${OUT}/lab-draft.png`, fullPage: true });
   await page.locator('.btn', { hasText: 'אישור ופתיחת המיזוג' }).click();
   await page.waitForURL(/\/f\//);
-  const fusionWrite = requests.find((r) => r.method === 'POST' && r.path.includes('architaip_fusions'));
+  const fusionWrite = requests.find((r) => r.path === '/edit/fusion');
   check(fusionWrite && fusionWrite.body.includes('fusion_logic'), 'fusion saved with lineage');
   await page.waitForSelector('.lineage');
   check(await page.locator('.lineage__row').count() === 2, 'fusion page shows lineage');
@@ -221,7 +231,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   requests.length = 0;
   await page.locator('.bar-btn', { hasText: 'מחיקה' }).click();
   await page.waitForURL(BASE + '/');
-  check(requests.some((r) => r.method === 'DELETE' && r.path.includes('architaip_fusions')), 'fusion delete sent');
+  check(requests.some((r) => r.path === '/edit/delete' && r.body.includes('fusion')), 'fusion delete sent');
 
   // Add culture dialog under the bar
   await page.locator('.btn', { hasText: 'הוספת תרבות' }).click();
@@ -229,6 +239,22 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const dlgTop = await page.locator('.dialog').evaluate((el) => el.getBoundingClientRect().top);
   check(dlgTop >= 59, 'dialog opens beneath the top bar');
   await page.screenshot({ path: `${OUT}/add-culture.png` });
+  await ctx.close();
+}
+
+// ── Opening the editor link ──
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push(e.message));
+  await mock(page, false);
+  await page.goto(`${BASE}/c/egypt#editor=${TEST_KEY}`);
+  await page.waitForSelector('text=מצב עריכה');
+  check(!page.url().includes('editor='), 'editor link: key leaves the address bar');
+  check(await page.evaluate((k) => localStorage.getItem('architaip:editor') === k, TEST_KEY), 'editor link: device remembered');
+  await page.goto(`${BASE}/`);
+  await page.waitForSelector('text=מצב עריכה');
+  check(true, 'editor link: still editor after navigating, no login again');
   await ctx.close();
 }
 
@@ -283,9 +309,9 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.goto(BASE + '/c/persia');
   await page.waitForSelector('text=מצב עריכה');
   await page.waitForTimeout(1500);
-  const uploads = requests.filter((r) => r.method === 'POST' && r.path.includes('/storage/v1/object/architaip-media/persia/'));
+  const uploads = requests.filter((r) => r.path.includes('/storage/v1/object/upload/sign/architaip-media/persia/'));
   check(uploads.length === 2, `waiting images upload after sign-in (${uploads.length})`);
-  const saves = requests.filter((r) => r.method === 'POST' && r.path.includes('architaip_culture_images'));
+  const saves = requests.filter((r) => r.path === '/edit/images');
   const last = saves.at(-1)?.body ?? '';
   check(last.includes('"private"') && last.includes('"threshold"') && last.includes('storage/v1/object/public'), 'both images saved together, neither overwrites the other');
   check(await page.locator('.frame__badge').count() === 0, 'pending badges clear after saving');
@@ -294,7 +320,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   requests.length = 0;
   await dropOn(3);
   await page.waitForTimeout(1200);
-  check(requests.some((r) => r.path.includes('/storage/v1/object/architaip-media/persia/prompt_0')), 'editor drop uploads directly');
+  check(requests.some((r) => r.path.includes('/upload/sign/architaip-media/persia/prompt_0')), 'editor drop uploads directly');
 
   // Lightbox takes a paste too
   await page.goto(BASE + '/c/persia?space=prompt_2');

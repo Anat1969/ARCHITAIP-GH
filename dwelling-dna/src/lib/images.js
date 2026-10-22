@@ -5,7 +5,7 @@
 // it survives the sign-in redirect) and shown at once; it is uploaded as soon
 // as the editor is signed in.
 
-import { supabase } from './supabase';
+import { edit, supabase } from './supabase';
 
 const BUCKET = 'architaip-media';
 const DB = 'architaip';
@@ -56,10 +56,14 @@ export async function prepareImage(file) {
 export async function uploadImage(entryId, slot, blob) {
   const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : blob.type === 'image/gif' ? 'gif' : 'jpg';
   const path = `${entryId}/${slot}-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
-    cacheControl: '31536000', contentType: blob.type || 'image/jpeg',
+  // The server checks the editor and hands back a one-time signed upload; the
+  // file itself goes straight to storage.
+  const signed = await edit('sign_upload', { path });
+  if (signed.error) throw new Error(signed.error.code === '42501' ? 'אין הרשאת עריכה במכשיר הזה' : signed.error.message);
+  const { error } = await supabase.storage.from(BUCKET).uploadToSignedUrl(path, signed.data.token, blob, {
+    contentType: blob.type || 'image/jpeg',
   });
-  if (error) throw new Error(/row-level|unauthorized|403/i.test(error.message) ? 'אין הרשאת העלאה' : error.message);
+  if (error) throw new Error(error.message);
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
