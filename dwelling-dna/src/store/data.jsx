@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import baseCultures from '../data/cultures';
-import { supabase } from '../lib/supabase';
+import { edit, supabase } from '../lib/supabase';
 import { useAuth } from './auth';
 import { allPending, deletePending, pendingKey, prepareImage, putPending, uploadImage } from '../lib/images';
 
@@ -123,20 +123,14 @@ export function DataProvider({ children }) {
     const next = { ...(contentRef.current[id] ?? {}), ...patch };
     contentRef.current = { ...contentRef.current, [id]: next };
     setContent(contentRef.current);
-    return track(supabase.from('architaip_culture_content').upsert(
-      { culture_id: id, session_id: SESSION_ID, content: next, updated_at: new Date().toISOString() },
-      { onConflict: 'culture_id,session_id' },
-    ));
+    return track(edit('content', { id, content: next }));
   }, [track]);
 
   const setImage = useCallback((id, slot, url) => {
     const next = { ...(imagesRef.current[id] ?? {}), [slot]: url || null };
     imagesRef.current = { ...imagesRef.current, [id]: next };
     setImages(imagesRef.current);
-    return track(supabase.from('architaip_culture_images').upsert(
-      { culture_id: id, session_id: SESSION_ID, images: next, updated_at: new Date().toISOString() },
-      { onConflict: 'culture_id,session_id' },
-    ), url ? 'התמונה נשמרה' : 'התמונה הוסרה');
+    return track(edit('images', { id, images: next }), url ? 'התמונה נשמרה' : 'התמונה הוסרה');
   }, [track]);
 
   const clearPreview = useCallback((key) => {
@@ -235,26 +229,21 @@ export function DataProvider({ children }) {
   const isPending = useCallback((id, slot) => pendingKey(id, slot) in previews, [previews]);
 
   const createCulture = useCallback(async (culture) => {
-    const ok = await track(supabase.from('architaip_cultures').upsert(cultureToRow(culture)), 'התרבות נוספה');
+    const ok = await track(edit('culture', { row: cultureToRow(culture) }), 'התרבות נוספה');
     if (ok) setCustom((prev) => [...prev.filter((c) => c.id !== culture.id), { ...culture, isCustom: true }]);
     return ok;
   }, [track]);
 
   const createFusion = useCallback(async (fusion) => {
-    const ok = await track(supabase.from('architaip_fusions').upsert(fusionToRow(fusion)), 'המיזוג נשמר');
+    const ok = await track(edit('fusion', { row: fusionToRow(fusion) }), 'המיזוג נשמר');
     if (ok) setFusions((prev) => [...prev, fusion]);
     return ok;
   }, [track]);
 
   const removeEntry = useCallback(async (entry) => {
-    const table = entry.kind === 'fusion' ? 'architaip_fusions' : 'architaip_cultures';
-    const ok = await track(supabase.from(table).delete().eq('id', entry.id), 'נמחק');
+    // The server removes the entry together with its text and image overlays.
+    const ok = await track(edit('delete', { kind: entry.kind, id: entry.id }), 'נמחק');
     if (!ok) return false;
-    // Overlays go with the entry they belong to.
-    await Promise.all([
-      supabase.from('architaip_culture_content').delete().eq('culture_id', entry.id),
-      supabase.from('architaip_culture_images').delete().eq('culture_id', entry.id),
-    ]);
     if (entry.kind === 'fusion') setFusions((prev) => prev.filter((f) => f.id !== entry.id));
     else setCustom((prev) => prev.filter((c) => c.id !== entry.id));
     return true;

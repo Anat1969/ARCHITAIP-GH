@@ -41,10 +41,10 @@ export default function TopBar() {
           {editing ? 'מצב עריכה' : 'מצב קריאה'}
         </button>
       )}
-      {user ? (
-        <button type="button" className="bar-btn bar-btn--quiet" onClick={signOut} title={user.email}>יציאה</button>
+      {isAdmin || user ? (
+        <button type="button" className="bar-btn bar-btn--quiet" onClick={signOut} title={user?.email}>יציאה ממצב עורכת</button>
       ) : (
-        <button type="button" className="bar-btn bar-btn--quiet" onClick={() => openLogin()}>כניסת עורכת</button>
+        <button type="button" className="bar-btn bar-btn--quiet" onClick={() => openLogin()}>מצב עורכת</button>
       )}
     </>
   );

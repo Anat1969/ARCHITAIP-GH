@@ -13,7 +13,7 @@ const BUCKET = 'architaip-media';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-editor-key',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -70,16 +70,34 @@ async function persist(imageUrl: string, cultureId: string, spaceId: string): Pr
   }
 }
 
+/** The personal editor key, opened once per device (see architaip-edit). */
+async function hasEditorKey(req: Request, supabaseUrl: string, serviceKey: string): Promise<boolean> {
+  const key = req.headers.get('x-editor-key') ?? '';
+  if (key.length < 16) return false;
+  try {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
+    const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const rows = await fetch(
+      `${supabaseUrl}/rest/v1/architaip_editor_keys?select=key_hash&key_hash=eq.${hash}`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    ).then((r) => r.json());
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Only the magazine's editor may spend model credits. The caller's session
- * token is checked against Supabase Auth, and the email against
- * architaip_admins - the same list the table policies read.
+ * Only the magazine's editor may spend model credits: the caller brings the
+ * editor key, or a session whose email is in architaip_admins.
  */
 async function isAdmin(req: Request): Promise<boolean> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceKey) return false;
+  if (await hasEditorKey(req, supabaseUrl, serviceKey)) return true;
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
-  if (!supabaseUrl || !serviceKey || !token) return false;
+  if (!token) return false;
   try {
     const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
