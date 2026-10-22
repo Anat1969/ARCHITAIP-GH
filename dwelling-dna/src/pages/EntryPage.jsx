@@ -264,7 +264,7 @@ export default function EntryPage({ kind }) {
 
       <AnimatePresence>
         {openItem && (
-          <Lightbox item={openItem} imageUrl={img[openItem.slot]} entryName={entry.name} onClose={() => setOpen(null)} onStep={step} />
+          <Lightbox item={openItem} imageUrl={img[openItem.slot]} entryId={entry.id} entryName={entry.name} onClose={() => setOpen(null)} onStep={step} />
         )}
       </AnimatePresence>
     </article>
