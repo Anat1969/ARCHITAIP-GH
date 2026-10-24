@@ -1,71 +1,40 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Mark from './Mark';
 import { useAuth } from '../store/auth';
 import { useData } from '../store/data';
-import { useInstallPrompt } from '../lib/install';
-import { copyText } from '../lib/clipboard';
 
 export const DEV_CHAT_URL = 'https://claude.ai/code/session_01VVH7JDffbMQREYfT2YAiLB';
 
-/** The studio's signature: the A&I monogram over the architect's name. */
-function StudioLogo() {
-  return (
-    <span className="studio" aria-label="אד' ענת שטיבלמן, A&I">
-      <span className="studio__mono">A&amp;I</span>
-      <span className="studio__name">אד' ענת שטיבלמן</span>
-    </span>
-  );
-}
-
-// The app name and its pages on the right; the studio logo on the left with
-// every action button in one row directly beneath it.
+// The app name and its pages on the right; on the left the A&I logo button
+// (<ai-menu> from https://appofapp-gh.vercel.app/ai-menu.js). Copy link, dev chat
+// and install come from it; edit mode and editor access are its items.
 export default function TopBar() {
   const { isAdmin, editing, setEditMode, user, signOut, openLogin } = useAuth();
   const { save } = useData();
-  const { canInstall, install } = useInstallPrompt();
-  const [copied, setCopied] = useState(false);
   const [menu, setMenu] = useState(false);
+  const aiMenu = useRef(null);
 
-  const copyLink = async () => {
-    await copyText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  };
+  useEffect(() => {
+    const el = aiMenu.current;
+    if (!el) return;
+    el.items = [
+      ...(isAdmin
+        ? [{ label: editing ? 'מצב עריכה' : 'מצב קריאה', hint: editing ? 'למצב קריאה' : 'למצב עריכה', pressed: editing, onSelect: () => setEditMode(!editing) }]
+        : []),
+      isAdmin || user
+        ? { label: 'יציאה ממצב עורכת', hint: user?.email, onSelect: signOut }
+        : { label: 'מצב עורכת', onSelect: () => openLogin() },
+    ];
+    el.status = isAdmin ? (editing ? 'מצב עריכה' : 'מצב קריאה') : '';
+  }, [isAdmin, editing, setEditMode, user, signOut, openLogin]);
 
   const nav = (
     <>
       <NavLink to="/" end className="topbar__link">אטלס</NavLink>
       <NavLink to="/read" className="topbar__link">קריאה</NavLink>
       <NavLink to="/lab" className="topbar__link">מעבדת מיזוג</NavLink>
-    </>
-  );
-
-  const actions = (
-    <>
-      <button type="button" className="bar-btn" onClick={copyLink}>
-        {copied ? 'הקישור הועתק' : 'העתקת קישור'}
-      </button>
-      <a className="bar-btn" href={DEV_CHAT_URL} target="_blank" rel="noreferrer">שיחת הפיתוח</a>
-      {canInstall && (
-        <button type="button" className="bar-btn bar-btn--accent" onClick={install}>התקנת האפליקציה</button>
-      )}
-      {isAdmin && (
-        <button
-          type="button"
-          className={`bar-btn ${editing ? 'bar-btn--on' : ''}`}
-          onClick={() => setEditMode(!editing)}
-          aria-pressed={editing}
-        >
-          {editing ? 'מצב עריכה' : 'מצב קריאה'}
-        </button>
-      )}
-      {isAdmin || user ? (
-        <button type="button" className="bar-btn bar-btn--quiet" onClick={signOut} title={user?.email}>יציאה ממצב עורכת</button>
-      ) : (
-        <button type="button" className="bar-btn bar-btn--quiet" onClick={() => openLogin()}>מצב עורכת</button>
-      )}
     </>
   );
 
@@ -85,10 +54,9 @@ export default function TopBar() {
         {save.state !== 'idle' && <span className={`save save--${save.state}`}>{save.message}</span>}
       </div>
 
-      {/* Left: the studio logo, and every action button directly beneath it. */}
+      {/* Left: the A&I logo button. */}
       <div className="topbar__studio">
-        <StudioLogo />
-        <div className="topbar__actions">{actions}</div>
+        <ai-menu ref={aiMenu} chat={DEV_CHAT_URL} />
       </div>
 
       <button
@@ -111,7 +79,6 @@ export default function TopBar() {
             onClick={(e) => { if (e.target.closest('a')) setMenu(false); }}
           >
             {nav}
-            <div className="topbar__drawer-actions">{actions}</div>
           </motion.div>
         )}
       </AnimatePresence>

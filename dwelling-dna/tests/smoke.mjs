@@ -23,6 +23,8 @@ const FUSION_JSON = JSON.stringify({
 });
 
 async function mock(page, admin) {
+  // ai-menu.js: AI_MENU_JS points to a local copy when the network is closed
+  if (process.env.AI_MENU_JS) await page.route('https://appofapp-gh.vercel.app/ai-menu.js', (r) => r.fulfill({ path: process.env.AI_MENU_JS, contentType: 'application/javascript' }));
   await page.route(`https://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -74,11 +76,15 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForSelector('.cover__title');
   await page.screenshot({ path: `${OUT}/home.png` });
   check(await page.locator('.tile').count() === 11, 'home shows 11 culture tiles');
-  check(await page.locator('text=מצב עורכת').first().isVisible(), 'reader sees editor access');
-  check(await page.locator('text=העתקת קישור').first().isVisible(), 'copy link button in bar');
+  check(await page.locator('ai-menu .logo').isVisible(), 'A&I logo button in the top bar');
+  check(!(await page.locator('header >> text=העתקת קישור').first().isVisible().catch(() => false)), 'no loose development buttons in the bar');
+  await page.locator('ai-menu .logo').click();
+  check(await page.locator('ai-menu .item', { hasText: 'מצב עורכת' }).isVisible(), 'reader sees editor access in the A&I menu');
+  check(await page.locator('ai-menu .item', { hasText: 'העתקת קישור' }).isVisible(), 'copy link in the A&I menu');
+  check(await page.locator('ai-menu a.item', { hasText: 'שיחת הפיתוח' }).isVisible(), 'dev chat in the A&I menu');
 
   // Editor access: no email, no password - the editor link, pasted once
-  await page.locator('.topbar__actions .bar-btn', { hasText: 'מצב עורכת' }).click();
+  await page.locator('ai-menu .item', { hasText: 'מצב עורכת' }).click();
   await page.waitForSelector('.dialog');
   await page.waitForTimeout(300);
   check(!(await page.locator('text=כניסה עם Google').count()), 'Google hidden when disabled on server');
@@ -93,11 +99,14 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForSelector('text=מצב עריכה');
   await page.waitForTimeout(600);
   check(!(await page.locator('.dialog').count()), 'pasting the editor link turns this device into an editor');
-  await page.locator('.topbar__actions .bar-btn', { hasText: 'יציאה ממצב עורכת' }).click();
-  await page.waitForSelector('text=מצב עורכת');
+  await page.locator('ai-menu .logo').click();
+  await page.locator('ai-menu .item', { hasText: 'יציאה ממצב עורכת' }).click();
+  await page.locator('ai-menu .logo').click();
+  await page.waitForSelector('ai-menu .item:has-text("מצב עורכת")');
+  await page.keyboard.press('Escape');
   check(await page.evaluate(() => !localStorage.getItem('architaip:editor')), 'leaving editor mode forgets the key');
 
-  check(await page.locator('text=שיחת הפיתוח').first().isVisible(), 'dev chat button in bar');
+  check(await page.locator('ai-menu').getAttribute('chat') === 'https://claude.ai/code/session_01VVH7JDffbMQREYfT2YAiLB', 'dev chat link on the A&I menu');
 
   // Atlas tab writes to URL
   await page.locator('.atlas__tab', { hasText: 'אור' }).click();
@@ -195,7 +204,8 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 
   // Copy link carries state
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.locator('.topbar__actions .bar-btn', { hasText: 'העתקת קישור' }).click();
+  await page.locator('ai-menu .logo').click();
+  await page.locator('ai-menu .item', { hasText: 'העתקת קישור' }).click();
   check(await page.locator('text=הקישור הועתק').waitFor({ timeout: 3000 }).then(() => true, () => false), 'copy link confirms');
 
   // Expert chat
@@ -205,9 +215,13 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.screenshot({ path: `${OUT}/culture-admin.png`, fullPage: false });
 
   // Toggle to reading mode
-  await page.locator('.topbar__actions .bar-btn', { hasText: 'מצב עריכה' }).click();
+  await page.waitForTimeout(1000);
+  await page.locator('ai-menu .logo').click();
+  await page.locator('ai-menu .item', { hasText: 'מצב עריכה' }).click();
+  await page.waitForTimeout(400);
   check(await page.locator('.reading__paragraph.editable').count() === 0, 'reading mode hides text editing');
-  await page.locator('.topbar__actions .bar-btn', { hasText: 'מצב קריאה' }).click();
+  await page.locator('ai-menu .logo').click();
+  await page.locator('ai-menu .item', { hasText: 'מצב קריאה' }).click();
 
   // Fusion: compare, generate, approve
   await page.goto(BASE + '/lab?p=egypt,japan');

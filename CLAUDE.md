@@ -4,7 +4,7 @@
 GitHub Pages הישן מפנה לכתובת החדשה בלבד.
 
 ## סרגל עליון
-- **בצד שמאל**: לוגו הסטודיו (מונוגרמה A&I ומתחתיה "אד' ענת שטיבלמן"), ומתחתיו שורה אחת של כל כפתורי הפעולה (העתקת קישור, שיחת הפיתוח, התקנה, מצב עריכה, יציאה).
+- **בצד שמאל**: כפתור הלוגו "אד' ענת שטיבלמן A&I" (`<ai-menu>`). כל כפתורי הפעולה (העתקת קישור, שיחת הפיתוח, התקנה, מצב עריכה, מצב עורכת ויציאה) נמצאים בתוכו בלבד.
 - **בצד ימין**: אייקון ושם האפליקציה (קישור לדף הבית), ומתחתם הניווט בין העמודים.
 - בנייד: לוגו, שם האפליקציה וכפתור "תפריט".
 - לעולם לא לפתוח חלון בתגובה להדבקה, גרירה או הקלדה. שורת מצב שקטה בסרגל בלבד.
@@ -40,3 +40,6 @@ GitHub Pages הישן מפנה לכתובת החדשה בלבד.
 
 ## מיזוג
 ענת אישרה מיזוג קבוע ל-main אחרי בדיקה ירוקה.
+
+## A&I logo button
+The top bar holds only the app name (links home), content navigation, and ONE logo button "אד' ענת שטיבלמן A&I" (`<ai-menu>` from https://appofapp-gh.vercel.app/ai-menu.js). Every editing and development action (העתקת קישור, שיחת הפיתוח, פרויקט המחקר, התקנת האפליקציה, edit mode, add, delete) lives only inside it, never as loose buttons. Standard: https://github.com/Anat1969/AppOfApp-GH/blob/main/docs/ai-menu-standard.md
