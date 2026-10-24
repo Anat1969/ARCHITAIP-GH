@@ -282,10 +282,10 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForSelector('text=ממתין לשמירה');
   const bg = await page.locator('.frame__image').first().evaluate((el) => el.style.backgroundImage);
   check(bg.includes('blob:'), 'dropped image shows immediately in the frame');
-  await page.waitForSelector('.dialog');
-  check(await page.locator('text=התמונה כבר במסגרת').isVisible(), 'sign-in opens and explains the image is kept');
+  await page.waitForTimeout(400);
+  check(!(await page.locator('.dialog').count()), 'no dialog opens when an image is placed');
+  check(await page.locator('text=התמונה שמורה בדפדפן').isVisible(), 'top bar says the image waits in this browser');
   await page.screenshot({ path: `${OUT}/drop-pending.png` });
-  await page.keyboard.press('Escape');
 
   // Paste onto a hovered frame
   await page.locator('.frame__image').nth(1).hover();

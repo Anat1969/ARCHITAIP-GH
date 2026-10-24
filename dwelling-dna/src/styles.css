@@ -15,7 +15,7 @@
   --accent: #8c7a5b;
   --danger: #9b2c22;
   --ok: #2f6b3f;
-  --bar-h: 60px;
+  --bar-h: 112px;
   --gutter: clamp(16px, 4vw, 56px);
   --radius: 14px;
   --shadow-1: 0 1px 2px rgba(0,0,0,.06), 0 6px 20px rgba(0,0,0,.07);
@@ -62,7 +62,7 @@ p { margin: 0; }
 .topbar {
   position: fixed; inset: 0 0 auto 0; z-index: 50;
   height: var(--bar-h);
-  display: flex; align-items: center; gap: 18px;
+  display: flex; flex-direction: column; justify-content: center; gap: 8px;
   padding: 0 var(--gutter);
   background: rgba(239, 237, 232, 0.78);
   backdrop-filter: saturate(1.4) blur(16px);
@@ -70,6 +70,13 @@ p { margin: 0; }
   border-bottom: 1px solid var(--line);
   box-shadow: 0 8px 30px rgba(0,0,0,.05);
 }
+.topbar__top { display: flex; align-items: center; gap: 16px; min-width: 0; }
+/* Buttons sit in one row directly beneath the studio logo (right edge in RTL). */
+.topbar__row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+.topbar__divider { width: 1px; height: 30px; background: var(--line-strong); flex: 0 0 auto; }
+.studio { display: grid; justify-items: center; gap: 3px; line-height: 1; flex: 0 0 auto; }
+.studio__mono { font-family: var(--sans); font-weight: 600; font-size: 17px; letter-spacing: .08em; padding: 4px 9px 3px; border: 1.5px solid var(--ink); border-radius: 3px; direction: ltr; }
+.studio__name { font-size: 11.5px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
 .topbar__brand { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .topbar__brand svg { filter: drop-shadow(0 4px 10px rgba(0,0,0,.25)); }
 .topbar__name { font-size: 21px; font-weight: 500; letter-spacing: -0.01em; }
@@ -91,7 +98,7 @@ p { margin: 0; }
 }
 .topbar__drawer-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); margin-top: 6px; }
 
-.save { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.06); }
+.save { font-family: var(--sans); font-size: 12.5px; letter-spacing: 0; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.06); }
 .save--saving { color: var(--muted); }
 .save--saved { color: var(--ok); background: rgba(47,107,63,.1); }
 .save--error { color: var(--danger); background: rgba(155,44,34,.1); }
@@ -424,12 +431,11 @@ p { margin: 0; }
 .empty-page h1 { font-size: clamp(36px, 6vw, 64px); font-weight: 200; }
 
 /* ── Narrow screens ── */
-@media (max-width: 1100px) {
-  .topbar__actions { display: none; }
-  .topbar .topbar__menu-btn { display: inline-flex; }
-}
 @media (max-width: 860px) {
-  .topbar__nav, .topbar__tag { display: none; }
+  :root { --bar-h: 68px; }
+  .topbar__row, .topbar__tag { display: none; }
+  .topbar .topbar__menu-btn { display: inline-flex; margin-inline-start: auto; }
+  .topbar__status { display: none; }
   /* A swipeable row keeps the three spaces side by side, so tradition and
      projection still read as a pair instead of six stacked cards. */
   .frames { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding-bottom: 6px; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scrollbar-width: none; }

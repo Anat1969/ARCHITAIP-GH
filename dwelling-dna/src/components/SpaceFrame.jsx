@@ -13,7 +13,7 @@ import { useImageDrop } from '../lib/useImageDrop';
  * at once and is saved as soon as the editor is signed in.
  */
 export default function SpaceFrame({ entryId, slot, kind, caption, gradient, prompt, imageUrl, tone, onOpen }) {
-  const { isAdmin, openLogin } = useAuth();
+  const { isAdmin } = useAuth();
   const { attachImage, removeImage, setImage, isPending } = useData();
   const [busy, setBusy] = useState(null); // 'gen' | 'upload' | null
   const [error, setError] = useState('');
@@ -32,7 +32,7 @@ export default function SpaceFrame({ entryId, slot, kind, caption, gradient, pro
   const drop = useImageDrop(place);
 
   const generate = async () => {
-    if (!isAdmin) { openLogin(); return; }
+    if (!isAdmin) { setError('יצירה ב-AI פועלת במכשיר שזוהה כעורכת.'); return; }
     setBusy('gen');
     setError('');
     try {
