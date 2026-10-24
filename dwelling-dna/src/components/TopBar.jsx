@@ -19,8 +19,8 @@ function StudioLogo() {
   );
 }
 
-// Two tiers: the studio logo and the app name on top, and every button in one
-// row directly beneath the logo.
+// The app name and its pages on the right; the studio logo on the left with
+// every action button in one row directly beneath it.
 export default function TopBar() {
   const { isAdmin, editing, setEditMode, user, signOut, openLogin } = useAuth();
   const { save } = useData();
@@ -71,31 +71,34 @@ export default function TopBar() {
 
   return (
     <header className="topbar" dir="rtl">
-      <div className="topbar__top">
-        <StudioLogo />
-        <span className="topbar__divider" />
+      {/* Right: the app and its pages. */}
+      <div className="topbar__app">
         <Link to="/" className="topbar__brand" aria-label="ארכיטייפ, לדף הבית">
           <Mark size={26} />
           <span className="topbar__name">ארכיטייפ</span>
           <span className="topbar__tag">DWELLING DNA</span>
         </Link>
-        <div className="topbar__status" aria-live="polite">
-          {save.state !== 'idle' && <span className={`save save--${save.state}`}>{save.message}</span>}
-        </div>
-        <button
-          type="button"
-          className="bar-btn topbar__menu-btn"
-          onClick={() => setMenu((m) => !m)}
-          aria-expanded={menu}
-        >
-          {menu ? 'סגירה' : 'תפריט'}
-        </button>
+        <nav className="topbar__nav" aria-label="ניווט ראשי">{nav}</nav>
       </div>
 
-      <div className="topbar__row">
-        <nav className="topbar__nav" aria-label="ניווט ראשי">{nav}</nav>
+      <div className="topbar__status" aria-live="polite">
+        {save.state !== 'idle' && <span className={`save save--${save.state}`}>{save.message}</span>}
+      </div>
+
+      {/* Left: the studio logo, and every action button directly beneath it. */}
+      <div className="topbar__studio">
+        <StudioLogo />
         <div className="topbar__actions">{actions}</div>
       </div>
+
+      <button
+        type="button"
+        className="bar-btn topbar__menu-btn"
+        onClick={() => setMenu((m) => !m)}
+        aria-expanded={menu}
+      >
+        {menu ? 'סגירה' : 'תפריט'}
+      </button>
 
       <AnimatePresence>
         {menu && (
