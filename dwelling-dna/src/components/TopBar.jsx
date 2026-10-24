@@ -9,6 +9,18 @@ import { copyText } from '../lib/clipboard';
 
 export const DEV_CHAT_URL = 'https://claude.ai/code/session_01VVH7JDffbMQREYfT2YAiLB';
 
+/** The studio's signature: the A&I monogram over the architect's name. */
+function StudioLogo() {
+  return (
+    <span className="studio" aria-label="אד' ענת שטיבלמן, A&I">
+      <span className="studio__mono">A&amp;I</span>
+      <span className="studio__name">אד' ענת שטיבלמן</span>
+    </span>
+  );
+}
+
+// Two tiers: the studio logo and the app name on top, and every button in one
+// row directly beneath the logo.
 export default function TopBar() {
   const { isAdmin, editing, setEditMode, user, signOut, openLogin } = useAuth();
   const { save } = useData();
@@ -21,6 +33,14 @@ export default function TopBar() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
+
+  const nav = (
+    <>
+      <NavLink to="/" end className="topbar__link">אטלס</NavLink>
+      <NavLink to="/read" className="topbar__link">קריאה</NavLink>
+      <NavLink to="/lab" className="topbar__link">מעבדת מיזוג</NavLink>
+    </>
+  );
 
   const actions = (
     <>
@@ -50,26 +70,18 @@ export default function TopBar() {
   );
 
   return (
-    <>
-      <header className="topbar" dir="rtl">
+    <header className="topbar" dir="rtl">
+      <div className="topbar__top">
+        <StudioLogo />
+        <span className="topbar__divider" />
         <Link to="/" className="topbar__brand" aria-label="ארכיטייפ, לדף הבית">
-          <Mark size={30} />
+          <Mark size={26} />
           <span className="topbar__name">ארכיטייפ</span>
           <span className="topbar__tag">DWELLING DNA</span>
         </Link>
-
-        <nav className="topbar__nav" aria-label="ניווט ראשי">
-          <NavLink to="/" end className="topbar__link">אטלס</NavLink>
-          <NavLink to="/read" className="topbar__link">קריאה</NavLink>
-          <NavLink to="/lab" className="topbar__link">מעבדת מיזוג</NavLink>
-        </nav>
-
         <div className="topbar__status" aria-live="polite">
           {save.state !== 'idle' && <span className={`save save--${save.state}`}>{save.message}</span>}
         </div>
-
-        <div className="topbar__actions">{actions}</div>
-
         <button
           type="button"
           className="bar-btn topbar__menu-btn"
@@ -78,25 +90,28 @@ export default function TopBar() {
         >
           {menu ? 'סגירה' : 'תפריט'}
         </button>
+      </div>
 
-        <AnimatePresence>
-          {menu && (
-            <motion.div
-              className="topbar__drawer"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-              onClick={(e) => { if (e.target.closest('a')) setMenu(false); }}
-            >
-              <NavLink to="/" end className="topbar__link">אטלס</NavLink>
-              <NavLink to="/read" className="topbar__link">קריאה</NavLink>
-              <NavLink to="/lab" className="topbar__link">מעבדת מיזוג</NavLink>
-              <div className="topbar__drawer-actions">{actions}</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
-    </>
+      <div className="topbar__row">
+        <nav className="topbar__nav" aria-label="ניווט ראשי">{nav}</nav>
+        <div className="topbar__actions">{actions}</div>
+      </div>
+
+      <AnimatePresence>
+        {menu && (
+          <motion.div
+            className="topbar__drawer"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            onClick={(e) => { if (e.target.closest('a')) setMenu(false); }}
+          >
+            {nav}
+            <div className="topbar__drawer-actions">{actions}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
   );
 }

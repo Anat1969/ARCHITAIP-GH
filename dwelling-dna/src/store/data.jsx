@@ -63,7 +63,7 @@ export function DataProvider({ children }) {
   // Images placed before sign-in: shown from this browser until uploaded.
   const [previews, setPreviews] = useState({}); // pendingKey -> object URL or link
   const [save, setSave] = useState({ state: 'idle', message: '' });
-  const { isAdmin, openLogin } = useAuth();
+  const { isAdmin } = useAuth();
   // Writes read the latest overlay from refs, so two saves in a row on one
   // entry never overwrite each other with a stale copy.
   const contentRef = useRef({});
@@ -156,9 +156,10 @@ export function DataProvider({ children }) {
     setPreviews((prev) => ({ ...prev, [key]: shown }));
 
     if (!isAdmin) {
+      // No dialog: the image stays in the frame and waits in this browser;
+      // the top bar says so, and it uploads once the device is an editor.
       await putPending(key, blob ? { blob } : { url });
-      setSave({ state: 'saving', message: 'התמונה ממתינה לכניסה' });
-      openLogin('image');
+      setSave({ state: 'saving', message: 'התמונה שמורה בדפדפן. תעלה לשרת כשהמכשיר יזוהה כעורכת' });
       return 'pending';
     }
     try {
@@ -171,7 +172,7 @@ export function DataProvider({ children }) {
       setSave({ state: 'error', message: err.message || 'ההעלאה נכשלה' });
       return 'failed';
     }
-  }, [isAdmin, openLogin, setImage, clearPreview]);
+  }, [isAdmin, setImage, clearPreview]);
 
   // Images left from before sign-in come back as previews on load...
   useEffect(() => {
