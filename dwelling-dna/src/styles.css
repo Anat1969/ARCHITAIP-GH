@@ -753,3 +753,21 @@ mark { background: linear-gradient(180deg, transparent 52%, #f3dc6b 52%); color:
 .entry--dna .entry-hero { min-height: min(60vh, 600px); }
 .entry--spaces .transfer { padding-top: 28px; }
 .entry--spaces .transfer .section-head h2 { font-size: clamp(28px, 3vw, 40px); }
+
+/* The finding above the focused criterion, and the cells that prove it */
+.cmp-insight { margin: 0 var(--gutter) 12px; padding: 12px 16px; border-radius: 10px; background: #fffbea; box-shadow: var(--shadow-1); display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; border-inline-start: 4px solid #c9a227; }
+.cmp-insight .mono { color: var(--muted); }
+.cmp-insight p { flex: 1 1 420px; font-size: clamp(17px, 1.5vw, 21px); font-weight: 400; line-height: 1.45; }
+.cmp-insight__proof { font-size: 12.5px; color: var(--muted); }
+.cmp-insight__close { border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.cmp td.is-proof, .cmp tr.is-focus td.is-proof { background: #f6dc6a !important; box-shadow: inset 4px 0 0 #8a6d00; }
+.cmp td.is-proof span { font-weight: 600 !important; }
+
+/* Spaces at one scale */
+.cmp__cell--space { min-width: 168px; width: 16%; padding: 8px !important; }
+.cmp-space { display: grid; gap: 6px; }
+.cmp-space__img { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); transition: transform .25s, box-shadow .25s; }
+.cmp-space:hover .cmp-space__img { transform: scale(1.03); box-shadow: var(--shadow-1); }
+.cmp-space__cap { font-size: 12.5px; line-height: 1.4; color: var(--ink-2); font-weight: 400 !important; }
+.cmp--focus .cmp__cell--space.is-focus { min-width: 240px; }
+.cmp__band--ancestral, .cmp__band--modern { border-bottom-color: var(--ink) !important; }

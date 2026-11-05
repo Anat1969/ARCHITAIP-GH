@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useData } from '../store/data';
-import { FAMILIES, FUSION_FAMILY, OPEN_FAMILY, LEVELS, familyOf, fieldValue } from '../data/reading';
+import { FAMILIES, FUSION_FAMILY, OPEN_FAMILY, LEVELS, FIELD_INSIGHTS, SPACE_FIELDS, familyOf, fieldValue, spaceOf } from '../data/reading';
 
 // The comparison: every culture read on the same criteria, and every criterion
 // of the same level side by side. Cultures can sit in rows or in columns; a
@@ -14,6 +14,10 @@ const DNA = LEVELS[1];
 const BANDS = [
   { id: 'mech', label: 'מנגנון', hint: 'כאוס, סדר, תפקיד', groups: [MECH, { id: 'distinct', label: 'ייחוד', en: 'DISTINCT', fields: [DISTINCT] }] },
   { id: 'dna', label: 'DNA', hint: 'חמשת הווקטורים', groups: [DNA] },
+  { id: 'spaces', label: 'מרחבים', hint: 'אותו מרחב, אותו קנה מידה', groups: [
+    { id: 'ancestral', label: 'במסורת', en: 'TRADITION', fields: SPACE_FIELDS.filter((f) => f.space === 'ancestral') },
+    { id: 'modern', label: 'בהקרנה קדימה', en: 'PROJECTION', fields: SPACE_FIELDS.filter((f) => f.space === 'modern') },
+  ] },
   { id: 'all', label: 'הכול', hint: 'תשעה קריטריונים וייחוד', groups: [MECH, DNA, { id: 'distinct', label: 'ייחוד', en: 'DISTINCT', fields: [DISTINCT] }] },
 ];
 
@@ -21,7 +25,7 @@ const FAMILY_ORDER = [...FAMILIES, FUSION_FAMILY, OPEN_FAMILY];
 const linkOf = (e) => (e.kind === 'fusion' ? '/f/' : '/c/') + e.id;
 
 export default function Compare() {
-  const { entries } = useData();
+  const { entries, images } = useData();
   const [params, setParams] = useSearchParams();
   const band = BANDS.find((b) => b.id === params.get('b')) ?? BANDS[0];
   const transposed = params.get('o') === 'cols';
@@ -74,6 +78,23 @@ export default function Compare() {
   };
   const toggleFocus = (key) => set('f', focus === key ? null : key);
   const clamp = band.id === 'all' ? 'cmp--clamp' : '';
+  const insight = focus ? FIELD_INSIGHTS[focus] : null;
+  const proof = (e) => (insight?.ids.includes(e.id) ? 'is-proof' : '');
+
+  // One cell: text for a criterion, a picture at one scale for a space.
+  const cell = (e, f) => {
+    if (!f.space) return <span>{fieldValue(e, f) || '—'}</span>;
+    const sp = spaceOf(e, f);
+    const img = images[e.id]?.[f.slot];
+    const base = (e.kind === 'fusion' ? '/f/' : '/c/') + e.id;
+    return (
+      <Link to={`${base}/spaces?space=${f.slot}`} className="cmp-space">
+        <span className="cmp-space__img" style={{ background: img ? `center / cover no-repeat url("${img}")` : sp.gradient }} />
+        <span className="cmp-space__cap">{sp.caption || '—'}</span>
+      </Link>
+    );
+  };
+  const title = (e, f) => (f.space ? spaceOf(e, f).caption : fieldValue(e, f));
 
   return (
     <div className="compare-page" dir="rtl">
@@ -120,6 +141,15 @@ export default function Compare() {
         <Link to="/dna" className="cmp-legend__how">איך נקבעו הקריטריונים</Link>
       </div>
 
+      {insight && (
+        <div className="cmp-insight" role="status">
+          <span className="mono">INSIGHT / {fields.find((f) => f.key === focus)?.label}</span>
+          <p><mark>{insight.text}</mark></p>
+          {insight.ids.length > 0 && <span className="cmp-insight__proof">התאים המודגשים בטבלה הם ההוכחה.</span>}
+          <button type="button" className="cmp-insight__close" onClick={() => set('f', null)}>ביטול ההדגשה</button>
+        </div>
+      )}
+
       <div className="cmp-scroll" ref={scroller}>
         {!transposed ? (
           <table className={`cmp ${clamp} ${focus ? 'cmp--focus' : ''}`}>
@@ -162,8 +192,8 @@ export default function Compare() {
                         </Link>
                       </th>
                       {fields.map((f) => (
-                        <td key={f.key} className={`cmp__cell cmp__cell--${f.key} ${cellClass(f)}`} title={fieldValue(e, f)}>
-                          <span>{fieldValue(e, f) || '—'}</span>
+                        <td key={f.key} className={`cmp__cell cmp__cell--${f.key} ${f.space ? 'cmp__cell--space' : ''} ${cellClass(f)} ${f.key === focus ? proof(e) : ''}`} title={title(e, f)}>
+                          {cell(e, f)}
                         </td>
                       ))}
                     </tr>
@@ -202,8 +232,8 @@ export default function Compare() {
                         </button>
                       </th>
                       {shown.map((e) => (
-                        <td key={e.id} className={`cmp__cell cmp__cell--${f.key}`} style={{ '--pc': familyOf(e).color }} title={fieldValue(e, f)}>
-                          <span>{fieldValue(e, f) || '—'}</span>
+                        <td key={e.id} className={`cmp__cell cmp__cell--${f.key} ${f.space ? 'cmp__cell--space' : ''} ${f.key === focus ? proof(e) : ''}`} style={{ '--pc': familyOf(e).color }} title={title(e, f)}>
+                          {cell(e, f)}
                         </td>
                       ))}
                     </tr>

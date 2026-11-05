@@ -116,3 +116,41 @@ export function fieldValue(entry, field) {
   if (field.key === 'distinct') return distinctOf(entry);
   return entry[field.key] ?? '';
 }
+
+// What a criterion says once it is read across every culture. Each line names
+// the cultures that prove it, and those cells light up under it, so the claim
+// can be checked against the table in one glance.
+export const FIELD_INSIGHTS = {
+  chaos: { text: 'רק מסופוטמיה פוחדת מכוח פיזי. כל האחרות פוחדות מהפרה של סדר בלתי נראה.', ids: ['mesopotamia'] },
+  order: { text: 'בארבע תרבויות הסדר נמדד: הלב נשקל, השמיים הם מדד, הקיום הוא עסקה, והגבול קפדני.', ids: ['egypt', 'china', 'maya', 'greece'] },
+  role: { text: 'תפקיד הבית הוא תמיד פועל: לשמור, להוכיח, לשלם, לטהר. אף תרבות לא רואה בבית רק מחסה.', ids: [] },
+  material: { text: 'ארבע תרבויות בוחרות חומר שחוזר לאדמה: בוץ, טיט, עץ ואזוב. האחרות בונות באבן כדי להחזיק מעמד.', ids: ['mesopotamia', 'celtic', 'japan', 'africa'] },
+  light: { text: 'ביפן, אצל הקלטים ובאפריקה האור מפוזר או פתוח. בשמונה האחרות לאור יש כיוון מחושב.', ids: ['japan', 'celtic', 'africa'] },
+  threshold: { text: 'רק במסופוטמיה הסף הוא חומה, ורק אצל הקלטים הוא מטושטש. אצל האחרות הסף הוא הכנה: טקס, מאמץ או החלטה.', ids: ['mesopotamia', 'celtic'] },
+  proportion: { text: 'שלוש תרבויות מודדות לפי האדם: הגוף ביוון, הדיוק ביפן, המרכז המשותף באפריקה. האחרות מודדות לפי האדמה או השמיים.', ids: ['greece', 'japan', 'africa'] },
+  narrative: { text: 'בשלוש תרבויות המרחב פונה אל המבקר ישירות: אתה זמני, מה אתה חייב לזכור, אתה בתוך הטוב.', ids: ['egypt', 'israel', 'persia'] },
+  distinct: { text: 'כל שורה כאן היא תשובה לשאלה: מה התרבות הזו עושה שאף אחת אחרת לא עושה?', ids: [] },
+  sp_private: { text: 'המרחב הפרטי מראה מה כל תרבות שומרת לעצמה: כובד, טוהר, זיכרון או קשב.', ids: [] },
+  sp_threshold: { text: 'הסף הוא המרחב שבו ההבדל בין התרבויות הכי גלוי: חומה, טקס, מדרגות או טשטוש.', ids: ['mesopotamia', 'celtic'] },
+  sp_communal: { text: 'המרחב הקהילתי מראה למי שייך המרכז: לאל, לשליט או לכולם.', ids: ['africa'] },
+};
+
+// The fourth level of the comparison: the spaces themselves, as images at one
+// scale. Tradition first, then the same space projected forward.
+export const SPACE_FIELDS = [
+  { key: 'sp_private', slot: 'private', idx: 0, label: 'פרטי', q: 'במסורת', space: 'ancestral' },
+  { key: 'sp_threshold', slot: 'threshold', idx: 1, label: 'מעבר', q: 'במסורת', space: 'ancestral' },
+  { key: 'sp_communal', slot: 'communal', idx: 2, label: 'קהילתי', q: 'במסורת', space: 'ancestral' },
+  { key: 'pr_0', slot: 'prompt_0', idx: 0, label: 'חוץ', q: 'בהקרנה', space: 'modern' },
+  { key: 'pr_1', slot: 'prompt_1', idx: 1, label: 'סף', q: 'בהקרנה', space: 'modern' },
+  { key: 'pr_2', slot: 'prompt_2', idx: 2, label: 'פנים', q: 'בהקרנה', space: 'modern' },
+];
+
+/** Caption, gradient and link slot for one space of an entry. */
+export function spaceOf(entry, field) {
+  if (field.space === 'ancestral') {
+    const s = entry.spaces?.find((x) => x.id === field.slot) ?? entry.spaces?.[field.idx];
+    return { caption: s?.caption ?? '', gradient: s?.gradient ?? entry.gradient };
+  }
+  return { caption: entry.modern?.[field.idx]?.caption ?? entry.prompts?.[field.idx]?.label ?? '', gradient: entry.gradient };
+}
