@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Mark from './Mark';
 import { useAuth } from '../store/auth';
@@ -15,6 +15,7 @@ export default function TopBar() {
   const { save } = useData();
   const [menu, setMenu] = useState(false);
   const aiMenu = useRef(null);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     const el = aiMenu.current;
@@ -32,9 +33,10 @@ export default function TopBar() {
 
   const nav = (
     <>
-      <NavLink to="/" end className="topbar__link">אטלס</NavLink>
-      <NavLink to="/read" className="topbar__link">קריאה</NavLink>
-      <NavLink to="/lab" className="topbar__link">מעבדת מיזוג</NavLink>
+      <NavLink to="/dna" className="topbar__link"><span className="topbar__n">01</span>מהי תרבות</NavLink>
+      <NavLink to="/compare" className="topbar__link"><span className="topbar__n">02</span>השוואה</NavLink>
+      <NavLink to="/cultures" className={({ isActive }) => `topbar__link ${isActive || /^\/[cf]\//.test(pathname) ? 'active' : ''}`}><span className="topbar__n">03</span>תרבויות</NavLink>
+      <NavLink to="/lab" className="topbar__link"><span className="topbar__n">04</span>מעבדת מיזוג</NavLink>
     </>
   );
 
