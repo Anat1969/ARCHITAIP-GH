@@ -7,6 +7,9 @@ import { useAuth } from './store/auth';
 import Home from './pages/Home';
 import EntryPage from './pages/EntryPage';
 import Lab from './pages/Lab';
+import Essence from './pages/Essence';
+import Compare from './pages/Compare';
+import Cultures from './pages/Cultures';
 import NotFound from './pages/NotFound';
 import { useData } from './store/data';
 
@@ -49,8 +52,13 @@ export default function App() {
             <Routes location={location}>
               <Route path="/" element={<Home />} />
               <Route path="/read" element={<ReadStart />} />
+              <Route path="/dna" element={<Essence />} />
+              <Route path="/compare" element={<Compare />} />
+              <Route path="/cultures" element={<Cultures />} />
               <Route path="/c/:id" element={<EntryPage kind="culture" />} />
+              <Route path="/c/:id/spaces" element={<EntryPage kind="culture" chapter="spaces" />} />
               <Route path="/f/:id" element={<EntryPage kind="fusion" />} />
+              <Route path="/f/:id/spaces" element={<EntryPage kind="fusion" chapter="spaces" />} />
               <Route path="/lab" element={<Lab />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

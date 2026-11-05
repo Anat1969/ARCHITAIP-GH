@@ -75,7 +75,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.goto(BASE + '/');
   await page.waitForSelector('.cover__title');
   await page.screenshot({ path: `${OUT}/home.png` });
-  check(await page.locator('.tile').count() === 11, 'home shows 11 culture tiles');
+  check(await page.locator('.door').count() === 4, 'home opens on four doors in reading order');
   check(await page.locator('ai-menu .logo').isVisible(), 'A&I logo button in the top bar');
   check(!(await page.locator('header >> text=העתקת קישור').first().isVisible().catch(() => false)), 'no loose development buttons in the bar');
   await page.locator('ai-menu .logo').click();
@@ -108,19 +108,48 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 
   check(await page.locator('ai-menu').getAttribute('chat') === 'https://claude.ai/code/session_01VVH7JDffbMQREYfT2YAiLB', 'dev chat link on the A&I menu');
 
-  // Atlas tab writes to URL
-  await page.locator('.atlas__tab', { hasText: 'אור' }).click();
+  // What is a culture: the formula fills with the chosen example
+  await page.locator('.door', { hasText: 'מהי תרבות' }).click();
+  await page.waitForSelector('.formula');
+  check(await page.locator('.level').count() === 3, 'essence reads on three levels');
+  check(await page.locator('.family').count() === 4, 'essence shows four families of chaos');
+  await page.locator('.formula .pill', { hasText: 'מאיה' }).click();
   await page.waitForTimeout(400);
-  check(page.url().includes('v=light'), 'atlas tab updates URL');
-  await page.locator('.atlas').screenshot({ path: `${OUT}/atlas.png` });
+  check(page.url().includes('c=maya') && (await page.locator('.formula').innerText()).includes('חוב דם'), 'example culture fills the formula');
+  await page.screenshot({ path: `${OUT}/essence.png` });
 
-  // Tile to culture
+  // Comparison: same level side by side, focus and transpose in the URL
+  await page.goto(BASE + '/compare');
+  await page.waitForSelector('.cmp');
+  check(await page.locator('.cmp__name').count() === 11, 'comparison has a row per culture');
+  check(await page.locator('.cmp__group').count() === 4, 'rows grouped by family');
+  await page.screenshot({ path: `${OUT}/compare.png` });
+  await page.locator('.seg__btn', { hasText: 'DNA' }).click();
+  await page.locator('.cmp__col button', { hasText: 'אור' }).click();
+  await page.waitForTimeout(300);
+  check(page.url().includes('b=dna') && page.url().includes('f=light'), 'band and focus write to URL');
+  check(await page.locator('td.is-focus').count() === 11, 'focus highlights one criterion across all cultures');
+  await page.locator('.cmp-filter .pill', { hasText: 'מצרים' }).click();
+  await page.locator('.cmp-filter .pill', { hasText: 'יפן' }).click();
+  await page.locator('.seg__btn', { hasText: 'תרבויות בטורים' }).click();
+  await page.waitForTimeout(300);
+  check(await page.locator('.cmp__head').count() === 2, 'transposed: picked cultures become columns');
+  await page.screenshot({ path: `${OUT}/compare-cols.png` });
+
+  // Contents tile to culture
+  await page.goto(BASE + '/cultures');
+  await page.waitForSelector('.tile');
+  check(await page.locator('.tile').count() === 11, 'contents shows 11 culture tiles');
   await page.locator('.tile', { hasText: 'יפן' }).click();
   await page.waitForURL(/\/c\/japan/);
   await page.waitForSelector('.entry-hero__name');
   await page.waitForTimeout(700);
   check((await page.locator('.entry-hero__name').innerText()).includes('יפן'), 'culture page opens');
+  check(await page.locator('.kin__distinct').isVisible(), 'culture shows what sets it apart');
   await page.screenshot({ path: `${OUT}/culture.png` });
+  await page.locator('.chapter', { hasText: 'המרחבים' }).click();
+  await page.waitForURL(/\/c\/japan\/spaces/);
+  await page.waitForSelector('.frame');
   await page.locator('.transfer').screenshot({ path: `${OUT}/transfer.png` });
   check(await page.locator('.frame').count() === 6, 'six space frames (ancestral + projection)');
   check(await page.locator('.chip', { hasText: 'העלאת תמונה' }).count() === 6, 'every frame offers upload, signed in or not');
@@ -139,13 +168,13 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 
   // Next culture by arrow key (RTL: left = forward)
   await page.keyboard.press('ArrowLeft');
-  await page.waitForURL(/\/c\/africa/);
+  await page.waitForURL(/\/c\/africa\/spaces/);
   check(true, 'left arrow turns to next culture');
 
   // Deep link and 404
   await page.goto(BASE + '/c/egypt?space=prompt_1');
   await page.waitForSelector('.lightbox');
-  check(true, 'deep link opens culture with space');
+  check(page.url().includes('/c/egypt/spaces?space=prompt_1'), 'old deep link lands in the spaces chapter');
   await page.goto(BASE + '/c/nope');
   await page.waitForSelector('.empty-page');
   check(true, 'unknown culture shows not-found page');
@@ -181,7 +210,6 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForSelector('.entry-hero__name');
   await page.waitForSelector('text=מצב עריכה');
   check(true, 'admin session shows edit mode');
-  check(await page.locator('.chip', { hasText: 'יצירה ב-AI' }).count() === 6, 'editor sees generate on every frame');
 
   // Edit paragraph inline
   requests.length = 0;
@@ -194,6 +222,9 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   check((await page.locator('.reading__paragraph').innerText()).includes('טקסט חדש'), 'edited text shows on page');
 
   // Generate image
+  await page.goto(BASE + '/c/greece/spaces');
+  await page.waitForSelector('.frame');
+  check(await page.locator('.chip', { hasText: 'יצירה ב-AI' }).count() === 6, 'editor sees generate on every frame');
   requests.length = 0;
   await page.locator('.chip', { hasText: 'יצירה ב-AI' }).first().click();
   await page.waitForTimeout(800);
@@ -209,6 +240,8 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   check(await page.locator('text=הקישור הועתק').waitFor({ timeout: 3000 }).then(() => true, () => false), 'copy link confirms');
 
   // Expert chat
+  await page.goto(BASE + '/c/greece');
+  await page.waitForSelector('.expert');
   await page.locator('.expert .chip').first().click();
   await page.waitForSelector('text=תשובת מומחה קצרה.');
   check(true, 'expert answers');
@@ -244,7 +277,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   // Delete fusion
   requests.length = 0;
   await page.locator('.bar-btn', { hasText: 'מחיקה' }).click();
-  await page.waitForURL(BASE + '/');
+  await page.waitForURL(BASE + '/cultures');
   check(requests.some((r) => r.path === '/edit/delete' && r.body.includes('fusion')), 'fusion delete sent');
 
   // Add culture dialog under the bar
@@ -279,7 +312,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   await mock(page, false);
-  await page.goto(BASE + '/c/persia');
+  await page.goto(BASE + '/c/persia/spaces');
   await page.waitForSelector('.frame__image');
 
   const dropOn = (index) => page.evaluate(({ index, b64 }) => {
@@ -320,7 +353,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   requests.length = 0;
   await page.unrouteAll({ behavior: 'ignoreErrors' });
   await mock(page, true);
-  await page.goto(BASE + '/c/persia');
+  await page.goto(BASE + '/c/persia/spaces');
   await page.waitForSelector('text=מצב עריכה');
   await page.waitForTimeout(1500);
   const uploads = requests.filter((r) => r.path.includes('/storage/v1/object/upload/sign/architaip-media/persia/'));
@@ -337,7 +370,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   check(requests.some((r) => r.path.includes('/upload/sign/architaip-media/persia/prompt_0')), 'editor drop uploads directly');
 
   // Lightbox takes a paste too
-  await page.goto(BASE + '/c/persia?space=prompt_2');
+  await page.goto(BASE + '/c/persia/spaces?space=prompt_2');
   await page.waitForSelector('.lightbox');
   requests.length = 0;
   await page.evaluate((b64) => {
@@ -357,7 +390,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   await mock(page, false);
-  for (const path of ['/', '/c/mesopotamia', '/lab?p=egypt,japan,maya', '/c/maya?space=communal']) {
+  for (const path of ['/', '/dna', '/compare', '/compare?o=cols&b=all', '/cultures', '/c/mesopotamia', '/c/mesopotamia/spaces', '/lab?p=egypt,japan,maya', '/c/maya?space=communal']) {
     await page.goto(BASE + path);
     await page.waitForTimeout(900);
     await noHScroll(page, `mobile ${path}`);
@@ -368,8 +401,9 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.locator('.topbar__menu-btn').click();
   await page.waitForSelector('.topbar__drawer');
   await page.screenshot({ path: `${OUT}/m-menu.png` });
-  await page.locator('.topbar__drawer .topbar__link', { hasText: 'קריאה' }).click();
-  await page.waitForURL(/\/c\//);
+  await page.locator('.topbar__drawer .topbar__link', { hasText: 'השוואה' }).click();
+  await page.waitForURL(/\/compare/);
+  await page.waitForTimeout(400); // the drawer's exit animation
   check(!(await page.locator('.topbar__drawer').count()), 'menu closes on navigation');
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${OUT}/m-culture.png`, fullPage: true });

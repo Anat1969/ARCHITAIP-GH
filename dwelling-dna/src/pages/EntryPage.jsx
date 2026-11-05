@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useData } from '../store/data';
 import { useAuth } from '../store/auth';
@@ -10,10 +10,11 @@ import ExpertChat from '../components/ExpertChat';
 import { VECTORS, pad2, spreadRows } from '../lib/dna';
 import NotFound from './NotFound';
 import PrintSheet from '../components/PrintSheet';
+import { familyOf, distinctOf } from '../data/reading';
 
 const LAST_READ = 'architaip:last';
 
-export default function EntryPage({ kind }) {
+export default function EntryPage({ kind, chapter = 'dna' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -26,6 +27,7 @@ export default function EntryPage({ kind }) {
   const prev = pos > 0 ? list[pos - 1] : null;
   const next = pos >= 0 && pos < list.length - 1 ? list[pos + 1] : null;
   const base = kind === 'fusion' ? '/f/' : '/c/';
+  const tail = chapter === 'spaces' ? '/spaces' : '';
 
   const rows = useMemo(() => (entry ? spreadRows(entry) : { ancestral: [], modern: [] }), [entry]);
   const flat = useMemo(() => [
@@ -60,17 +62,19 @@ export default function EntryPage({ kind }) {
   useEffect(() => {
     const onKey = (e) => {
       if (openSlot || /INPUT|TEXTAREA/.test(document.activeElement?.tagName ?? '')) return;
-      if (e.key === 'ArrowLeft' && next) navigate(base + next.id);
-      if (e.key === 'ArrowRight' && prev) navigate(base + prev.id);
+      if (e.key === 'ArrowLeft' && next) navigate(base + next.id + tail);
+      if (e.key === 'ArrowRight' && prev) navigate(base + prev.id + tail);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [next, prev, navigate, base, openSlot]);
+  }, [next, prev, navigate, base, tail, openSlot]);
 
   if (!entry) {
     if (status === 'loading') return <div className="page-loading mono">LOADING</div>;
     return <NotFound />;
   }
+  // A space opens in the spaces chapter, so an old deep link still lands on it.
+  if (chapter === 'dna' && openSlot) return <Navigate to={`${base}${entry.id}/spaces?space=${openSlot}`} replace />;
 
   const img = images[entry.id] ?? {};
   const hero = img.prompt_0 || img.communal || img.private || img.threshold || null;
@@ -81,6 +85,9 @@ export default function EntryPage({ kind }) {
     '--c3': entry.colors?.accent ?? '#bbb',
   };
   const isFusion = entry.kind === 'fusion';
+  const fam = familyOf(entry);
+  const siblings = isFusion ? [] : entries.cultures.filter((c) => c.id !== entry.id && familyOf(c).id === fam.id);
+  const onSpaces = chapter === 'spaces';
   const parents = isFusion ? (entry.lineage?.parents ?? []).map((pid, i) => ({
     id: pid,
     name: entry.lineage.parent_names?.[i] ?? pid,
@@ -109,9 +116,9 @@ export default function EntryPage({ kind }) {
 
   return (
     <>
-    <article className="entry" style={tone} dir="rtl">
+    <article className={`entry entry--${chapter}`} style={tone} dir="rtl">
       {/* ── Opening: the name as image ── */}
-      <header className="entry-hero">
+      <header className={`entry-hero ${onSpaces ? 'entry-hero--compact' : ''}`}>
         <div className="entry-hero__bg" style={{ background: entry.gradient }} />
         {hero && <div className="entry-hero__img" style={{ backgroundImage: `url("${hero}")` }} />}
         <div className="entry-hero__veil" />
@@ -119,6 +126,7 @@ export default function EntryPage({ kind }) {
           <div className="entry-hero__meta mono">
             <span>{isFusion ? 'FUSION' : 'CULTURE'} {pad2(entry.index)} / {pad2(list.length)}</span>
             <span>{entry.archetype || (isFusion ? 'מיזוג' : '')}</span>
+            {!isFusion && <span className="entry-hero__family" style={{ '--pc': fam.color }}>{fam.label}</span>}
           </div>
           <motion.h1
             className="entry-hero__name"
@@ -128,7 +136,7 @@ export default function EntryPage({ kind }) {
           >
             {entry.name}
           </motion.h1>
-          <Editable as="blockquote" className="entry-hero__insight" value={entry.insight} onSave={save('insight')} multiline placeholder="תובנה" />
+          {!onSpaces && <Editable as="blockquote" className="entry-hero__insight" value={entry.insight} onSave={save('insight')} multiline placeholder="תובנה" />}
           <div className="entry-hero__tools no-print">
             <button type="button" className="bar-btn bar-btn--glass" onClick={fullscreen}>מצב הצגה</button>
             <button type="button" className="bar-btn bar-btn--glass" onClick={printSheet}>ייצוא PDF</button>
@@ -139,7 +147,7 @@ export default function EntryPage({ kind }) {
                 className="bar-btn bar-btn--glass bar-btn--danger"
                 onClick={async () => {
                   if (!window.confirm(`למחוק את "${entry.name}"? הפעולה אינה הפיכה.`)) return;
-                  if (await removeEntry(entry)) navigate('/');
+                  if (await removeEntry(entry)) navigate('/cultures');
                 }}
               >
                 מחיקה
@@ -149,6 +157,17 @@ export default function EntryPage({ kind }) {
         </div>
       </header>
 
+      <nav className="chapters no-print" aria-label="פרקים">
+        <Link to={base + entry.id} className={`chapter ${!onSpaces ? 'chapter--on' : ''}`} aria-current={!onSpaces ? 'page' : undefined}>
+          <span className="mono">01</span> ה-DNA <span className="chapter__sub">מנגנון, וקטורים, טקסט</span>
+        </Link>
+        <Link to={`${base}${entry.id}/spaces`} className={`chapter ${onSpaces ? 'chapter--on' : ''}`} aria-current={onSpaces ? 'page' : undefined}>
+          <span className="mono">02</span> {isFusion ? 'מרחבי המיזוג' : 'המרחבים'} <span className="chapter__sub">{isFusion ? 'שלושה מרחבים' : 'מסורת והקרנה קדימה'}</span>
+        </Link>
+        {!isFusion && <Link to={`/compare?h=${entry.id}`} className="chapter chapter--out">בטבלת ההשוואה</Link>}
+      </nav>
+
+      {!onSpaces && (<>
       {/* ── The mechanism: chaos, order, role ── */}
       <section className="entry-section mechanism">
         <div className="section-head">
@@ -194,7 +213,42 @@ export default function EntryPage({ kind }) {
         )}
       </section>
 
-      {/* ── The transfer: tradition, DNA, projection ── */}
+      {/* ── Its place among the others ── */}
+      {!isFusion && (
+        <section className="entry-section kin" style={{ '--pc': fam.color }}>
+          <div className="kin__main">
+            <span className="mono">03 DISTINCT</span>
+            <span className="family-tag" style={{ '--pc': fam.color }}>{fam.label}</span>
+            <p className="kin__distinct">{distinctOf(entry)}</p>
+            <p className="muted">{fam.rule} <b>{fam.house}</b></p>
+          </div>
+          {siblings.length > 0 && (
+            <div className="kin__side">
+              <span className="mono">באותה משפחה</span>
+              {siblings.map((s) => (
+                <Link key={s.id} to={`/c/${s.id}`} className="kin__sib">
+                  <b>{s.name}</b>
+                  <span>{s.chaos}, ולכן {s.role}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="entry-section">
+        <div className="section-head">
+          <span className="mono">04 DNA</span>
+          <h2>חמשת הווקטורים</h2>
+          <p className="muted">איך המנגנון הופך לחומר, לאור, לסף, לקנה מידה ולסיפור.</p>
+        </div>
+        <DnaStrip entry={entry} />
+      </section>
+
+      {editing && <div className="entry-section no-print"><ExpertChat entry={entry} /></div>}
+      </>)}
+
+      {onSpaces && (
       <section className="entry-section transfer">
         <div className="section-head">
           <span className="mono">02 TRANSFER</span>
@@ -215,25 +269,7 @@ export default function EntryPage({ kind }) {
           </div>
         </div>
 
-        <div className="dna-strip">
-          <div className="dna-strip__tag mono">DNA</div>
-          <div className="dna-strip__cells">
-            {VECTORS.map((v, i) => (
-              <motion.div
-                key={v.key}
-                className="dna-cell"
-                initial={{ opacity: 0, scaleY: 0.6 }}
-                whileInView={{ opacity: 1, scaleY: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.07 }}
-              >
-                <span className="mono dna-cell__en">{v.en}</span>
-                <span className="dna-cell__he">{v.label}</span>
-                <span className="dna-cell__val">{entry.vectors?.[v.key] ?? ''}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+        <DnaStrip entry={entry} compact />
 
         {rows.modern.length > 0 && (
           <div className="transfer__row">
@@ -254,37 +290,60 @@ export default function EntryPage({ kind }) {
           </div>
         )}
       </section>
-
-      {editing && <div className="entry-section no-print"><ExpertChat entry={entry} /></div>}
+      )}
 
       {/* ── Turning the page ── */}
       <nav className="turn no-print" aria-label="מעבר בין עמודים">
         {prev ? (
-          <Link to={base + prev.id} className="turn__link turn__link--prev" style={{ '--tc': prev.colors?.accent }}>
+          <Link to={base + prev.id + tail} className="turn__link turn__link--prev" style={{ '--tc': prev.colors?.accent }}>
             <span className="mono">PREVIOUS {pad2(prev.index)}</span>
             <span className="turn__name">{prev.name}</span>
           </Link>
         ) : <span />}
         {next ? (
-          <Link to={base + next.id} className="turn__link turn__link--next" style={{ '--tc': next.colors?.accent }}>
+          <Link to={base + next.id + tail} className="turn__link turn__link--next" style={{ '--tc': next.colors?.accent }}>
             <span className="mono">NEXT {pad2(next.index)}</span>
             <span className="turn__name">{next.name}</span>
           </Link>
         ) : (
-          <Link to={kind === 'fusion' ? '/lab' : '/'} className="turn__link turn__link--next">
+          <Link to={kind === 'fusion' ? '/lab' : '/cultures'} className="turn__link turn__link--next">
             <span className="mono">END</span>
-            <span className="turn__name">{kind === 'fusion' ? 'למעבדה' : 'לאטלס'}</span>
+            <span className="turn__name">{kind === 'fusion' ? 'למעבדה' : 'לתוכן העניינים'}</span>
           </Link>
         )}
       </nav>
 
       <AnimatePresence>
-        {openItem && (
+        {onSpaces && openItem && (
           <Lightbox item={openItem} imageUrl={img[openItem.slot]} entryId={entry.id} entryName={entry.name} onClose={() => setOpen(null)} onStep={step} />
         )}
       </AnimatePresence>
     </article>
     <PrintSheet entry={entry} rows={rows} images={img} total={list.length} />
     </>
+  );
+}
+
+function DnaStrip({ entry, compact = false }) {
+  return (
+    <div className={`dna-strip ${compact ? 'dna-strip--compact' : ''}`}>
+      <div className="dna-strip__tag mono">DNA</div>
+      <div className="dna-strip__cells">
+        {VECTORS.map((v, i) => (
+          <motion.div
+            key={v.key}
+            className="dna-cell"
+            initial={{ opacity: 0, scaleY: 0.6 }}
+            whileInView={{ opacity: 1, scaleY: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.07 }}
+          >
+            <span className="mono dna-cell__en">{v.en}</span>
+            <span className="dna-cell__he">{v.label}</span>
+            <span className="dna-cell__val">{entry.vectors?.[v.key] ?? ''}</span>
+          </motion.div>
+        ))}
+      </div>
+    </div>
   );
 }
