@@ -10,6 +10,7 @@ import Lab from './pages/Lab';
 import Essence from './pages/Essence';
 import Compare from './pages/Compare';
 import Cultures from './pages/Cultures';
+import Pending from './pages/Pending';
 import NotFound from './pages/NotFound';
 import { useData } from './store/data';
 
@@ -55,6 +56,7 @@ export default function App() {
               <Route path="/dna" element={<Essence />} />
               <Route path="/compare" element={<Compare />} />
               <Route path="/cultures" element={<Cultures />} />
+              <Route path="/pending" element={<Pending />} />
               <Route path="/c/:id" element={<EntryPage kind="culture" />} />
               <Route path="/c/:id/spaces" element={<EntryPage kind="culture" chapter="spaces" />} />
               <Route path="/f/:id" element={<EntryPage kind="fusion" />} />

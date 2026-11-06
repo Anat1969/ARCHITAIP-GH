@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useData } from '../store/data';
 import { FUSION_MODES, VECTORS } from '../lib/dna';
 import { generateFusion } from '../lib/generate';
+import { SUGGESTED_FUSIONS, LOCAL_LABEL } from '../data/reading';
 
 // The lab is a comparison first and a generator second: setting two or more
 // cultures side by side, vector by vector, is already the insight a lecture
@@ -96,9 +97,38 @@ export default function Lab() {
 
       <AnimatePresence mode="wait">
         {picked.length < 2 ? (
-          <motion.p key="hint" className="lab__hint muted" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {picked.length === 1 ? `נבחרה ${picked[0].name}. בחרי עוד אחת לפחות.` : 'עוד לא נבחרו תרבויות.'}
-          </motion.p>
+          <motion.div key="hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <p className="lab__hint muted">
+              {picked.length === 1 ? `נבחרה ${picked[0].name}. בחרו עוד אחת לפחות, או מיזוג מוצע.` : 'בחרו תרבויות, או התחילו ממיזוג מוצע.'}
+            </p>
+            <section className="suggest" aria-label="מיזוגים מוצעים">
+              <div className="suggest__head">
+                <span className="mono">SUGGESTED</span>
+                <h2>מהעולם אל הסביבה הקרובה</h2>
+                <p className="muted">כל זוג מעמיד תרבות מהעולם מול תת־תרבות {LOCAL_LABEL}, או שתי תשובות מקומיות זו מול זו.</p>
+              </div>
+              <div className="suggest__grid">
+                {SUGGESTED_FUSIONS.map((s) => {
+                  const pair = s.ids.map(get).filter(Boolean);
+                  if (pair.length < 2) return null;
+                  return (
+                    <button key={s.ids.join('+')} type="button" className="suggest__card" onClick={() => { setParams({ p: s.ids.join(',') }, { replace: true }); setDraft(null); }}>
+                      <span className="suggest__pair">
+                        {pair.map((p, i) => (
+                          <span key={p.id} className="suggest__name" style={{ '--c3': p.colors?.accent }}>
+                            {i > 0 && <span className="suggest__x">×</span>}
+                            {p.name}
+                            {p.local && <span className="local-tag">{LOCAL_LABEL}</span>}
+                          </span>
+                        ))}
+                      </span>
+                      <span className="suggest__why">{s.why}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </motion.div>
         ) : (
           <motion.div key="cmp" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <div className="compare" style={{ '--cols': picked.length }}>

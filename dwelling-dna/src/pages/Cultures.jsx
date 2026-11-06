@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useData } from '../store/data';
 import { useAuth } from '../store/auth';
 import { pad2 } from '../lib/dna';
-import { FAMILIES, OPEN_FAMILY, familyOf, distinctOf } from '../data/reading';
+import { FAMILIES, OPEN_FAMILY, LOCAL_LABEL, familyOf, distinctOf } from '../data/reading';
 import CultureCreate from '../components/CultureCreate';
 
 // The contents: every culture as a door, arranged by where it finds its chaos,
@@ -61,6 +61,7 @@ export default function Cultures() {
                     {img && <span className="tile__img" style={{ backgroundImage: `url("${img}")` }} />}
                     <span className="tile__veil" />
                     <span className="mono tile__num">{pad2(c.index)}</span>
+                    {c.local && <span className="local-tag tile__local">{LOCAL_LABEL}</span>}
                     <span className="tile__name">{c.name}</span>
                     <span className="tile__arch">{c.archetype}</span>
                     <span className="tile__distinct">{distinctOf(c)}</span>

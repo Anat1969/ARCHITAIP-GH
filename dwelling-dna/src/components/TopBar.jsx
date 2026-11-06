@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Mark from './Mark';
 import { useAuth } from '../store/auth';
@@ -12,7 +12,9 @@ export const DEV_CHAT_URL = 'https://claude.ai/code/session_01VVH7JDffbMQREYfT2Y
 // and install come from it; edit mode and editor access are its items.
 export default function TopBar() {
   const { isAdmin, editing, setEditMode, user, signOut, openLogin } = useAuth();
-  const { save } = useData();
+  const { save, entries } = useData();
+  const navigate = useNavigate();
+  const waiting = entries.fusions.filter((f) => f.approved === false).length;
   const [menu, setMenu] = useState(false);
   const aiMenu = useRef(null);
   const { pathname } = useLocation();
@@ -22,14 +24,17 @@ export default function TopBar() {
     if (!el) return;
     el.items = [
       ...(isAdmin
-        ? [{ label: editing ? 'מצב עריכה' : 'מצב קריאה', hint: editing ? 'למצב קריאה' : 'למצב עריכה', pressed: editing, onSelect: () => setEditMode(!editing) }]
+        ? [
+          { label: editing ? 'מצב עריכה' : 'מצב קריאה', hint: editing ? 'למצב קריאה' : 'למצב עריכה', pressed: editing, onSelect: () => setEditMode(!editing) },
+          { label: waiting ? `ממתינים לאישור (${waiting})` : 'ממתינים לאישור', hint: 'מיזוגים של קוראים', onSelect: () => navigate('/pending') },
+        ]
         : []),
       isAdmin || user
         ? { label: 'יציאה ממצב עורכת', hint: user?.email, onSelect: signOut }
         : { label: 'מצב עורכת', onSelect: () => openLogin() },
     ];
     el.status = isAdmin ? (editing ? 'מצב עריכה' : 'מצב קריאה') : '';
-  }, [isAdmin, editing, setEditMode, user, signOut, openLogin]);
+  }, [isAdmin, editing, setEditMode, user, signOut, openLogin, waiting, navigate]);
 
   const nav = (
     <>

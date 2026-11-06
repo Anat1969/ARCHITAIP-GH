@@ -127,6 +127,7 @@ export default function EntryPage({ kind, chapter = 'dna' }) {
             <span>{isFusion ? 'FUSION' : 'CULTURE'} {pad2(entry.index)} / {pad2(list.length)}</span>
             <span>{entry.archetype || (isFusion ? 'מיזוג' : '')}</span>
             {!isFusion && <span className="entry-hero__family" style={{ '--pc': fam.color }}>{fam.label}</span>}
+            {entry.local && <span className="local-tag local-tag--dark">בארץ, סביבה קרובה</span>}
           </div>
           <motion.h1
             className="entry-hero__name"

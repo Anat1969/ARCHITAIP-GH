@@ -53,7 +53,31 @@ export const READING = {
   celtic: { family: 'bond', distinct: 'ההפך מכולן: הסכנה היא בגבול הסגור. הבית מטשטש פנים וחוץ.' },
   japan: { family: 'bond', distinct: 'הכאוס הוא לכלוך ולא אויב. הבית מנקה, מצמצם ומפנה מקום לנוכחות.' },
   africa: { family: 'bond', distinct: 'יחידת הקיום היא הקהילה. הבית בנוי סביב מרכז ששייך לכולם.' },
+  rome: { family: 'human', distinct: 'הסדר הוא תשתית. הבית חוזר על תוכנית העיר: ציר, רשת וחצר פתוחה לשמיים.' },
+  islamic: { family: 'nature', distinct: 'החוץ לשמש, הפנים למשפחה. הבית פונה עורף לרחוב ושם מים במרכז.' },
+  gothic: { family: 'cosmos', distinct: 'הקיר נעלם לטובת אור. האבן מוותרת על משקלה כדי להרים את המבט.' },
+  bedouin: { family: 'bond', distinct: 'הבית זז והאירוח קבוע. הסף פתוח לאורח, ולא סגור בפני זר.' },
+  galilee: { family: 'nature', distinct: 'הבית גדל עם המשפחה. אבן עבה וקמרון סביב חצר אחת לכמה דורות.' },
+  kibbutz: { family: 'human', distinct: 'הפרטי מצטמצם לחדר. החיים, האוכל וההחלטות עוברים למבנה המשותף.' },
+  whitecity: { family: 'nature', distinct: 'מודרניזם שהאקלים עיצב: מרפסת כצל, עמודים לרוח, לבן מול השמש.' },
 };
+
+// The near environment: cultures of the land the magazine is read in.
+export const isLocal = (entry) => !!entry?.local;
+export const LOCAL_LABEL = 'בארץ';
+
+// Fusions worth trying: a world culture beside a local one, or two local ones.
+// Each pair names the tension the historian is asked to resolve.
+export const SUGGESTED_FUSIONS = [
+  { ids: ['bedouin', 'islamic'], why: 'שתי תשובות למדבר: אוהל שנפתח לאורח, וחצר שנסגרת מפני המבט.' },
+  { ids: ['kibbutz', 'africa'], why: 'שתי קהילות שבנו מרכז משותף. אחת מתוך רעיון, אחת מתוך מסורת.' },
+  { ids: ['whitecity', 'japan'], why: 'מינימליזם של שמש מול מינימליזם של צל ונייר.' },
+  { ids: ['galilee', 'rome'], why: 'חצר, קמרון ומשפחה. בית שגדל לאט מול בית שנמדד מראש.' },
+  { ids: ['galilee', 'israel'], why: 'אותה אבן, אותה ארץ. זיכרון מול משפחה.' },
+  { ids: ['kibbutz', 'whitecity'], why: 'המודרניזם של השדה מול המודרניזם של העיר.' },
+  { ids: ['bedouin', 'mesopotamia'], why: 'שתי תשובות לאותו מרחב קשה: חומה כבדה מול אריג נייד.' },
+  { ids: ['gothic', 'whitecity'], why: 'שני בניינים שוויתרו על הקיר: אחד בשביל אור אלוהי, אחד בשביל אוויר.' },
+];
 
 /** The family an entry belongs to, with fusions and unassigned cultures kept apart. */
 export function familyOf(entry) {
@@ -121,18 +145,18 @@ export function fieldValue(entry, field) {
 // the cultures that prove it, and those cells light up under it, so the claim
 // can be checked against the table in one glance.
 export const FIELD_INSIGHTS = {
-  chaos: { text: 'רק מסופוטמיה פוחדת מכוח פיזי. כל האחרות פוחדות מהפרה של סדר בלתי נראה.', ids: ['mesopotamia'] },
-  order: { text: 'בארבע תרבויות הסדר נמדד: הלב נשקל, השמיים הם מדד, הקיום הוא עסקה, והגבול קפדני.', ids: ['egypt', 'china', 'maya', 'greece'] },
+  chaos: { text: 'ארבע תרבויות פוחדות מכוח פיזי: מים, שמש, מדבר וצפיפות. כל האחרות פוחדות מהפרה של סדר בלתי נראה.', ids: ['mesopotamia', 'islamic', 'galilee', 'whitecity'] },
+  order: { text: 'בחמש תרבויות הסדר נמדד: הלב נשקל, השמיים הם מדד, הקיום הוא עסקה, הגבול קפדני, והחוק נמתח כרשת.', ids: ['egypt', 'china', 'maya', 'greece', 'rome'] },
   role: { text: 'תפקיד הבית הוא תמיד פועל: לשמור, להוכיח, לשלם, לטהר. אף תרבות לא רואה בבית רק מחסה.', ids: [] },
-  material: { text: 'ארבע תרבויות בוחרות חומר שחוזר לאדמה: בוץ, טיט, עץ ואזוב. האחרות בונות באבן כדי להחזיק מעמד.', ids: ['mesopotamia', 'celtic', 'japan', 'africa'] },
-  light: { text: 'ביפן, אצל הקלטים ובאפריקה האור מפוזר או פתוח. בשמונה האחרות לאור יש כיוון מחושב.', ids: ['japan', 'celtic', 'africa'] },
-  threshold: { text: 'רק במסופוטמיה הסף הוא חומה, ורק אצל הקלטים הוא מטושטש. אצל האחרות הסף הוא הכנה: טקס, מאמץ או החלטה.', ids: ['mesopotamia', 'celtic'] },
-  proportion: { text: 'שלוש תרבויות מודדות לפי האדם: הגוף ביוון, הדיוק ביפן, המרכז המשותף באפריקה. האחרות מודדות לפי האדמה או השמיים.', ids: ['greece', 'japan', 'africa'] },
+  material: { text: 'חמש תרבויות בוחרות חומר שחוזר לאדמה: בוץ, טיט, עץ, אזוב ושיער עזים. האחרות בונות באבן ובבטון כדי להחזיק מעמד.', ids: ['mesopotamia', 'celtic', 'japan', 'africa', 'bedouin'] },
+  light: { text: 'בחמש תרבויות האור מפוזר, מסונן או פתוח: נייר, עלווה, חצר, סורג ואריג. באחרות לאור יש כיוון מחושב.', ids: ['japan', 'celtic', 'africa', 'islamic', 'bedouin'] },
+  threshold: { text: 'במסופוטמיה הסף הוא חומה. אצל הקלטים, בקיבוץ ובעיר הלבנה הוא מטושטש, ואצל הבדואים הוא הזמנה. אצל האחרות הסף הוא הכנה: טקס, מאמץ או החלטה.', ids: ['mesopotamia', 'celtic', 'kibbutz', 'whitecity', 'bedouin'] },
+  proportion: { text: 'חמש תרבויות מודדות לפי האדם: הגוף ביוון, הדיוק ביפן, המרכז באפריקה, הבית השווה בקיבוץ והמרפסת בעיר הלבנה. האחרות מודדות לפי האדמה או השמיים.', ids: ['greece', 'japan', 'africa', 'kibbutz', 'whitecity'] },
   narrative: { text: 'בשלוש תרבויות המרחב פונה אל המבקר ישירות: אתה זמני, מה אתה חייב לזכור, אתה בתוך הטוב.', ids: ['egypt', 'israel', 'persia'] },
   distinct: { text: 'כל שורה כאן היא תשובה לשאלה: מה התרבות הזו עושה שאף אחת אחרת לא עושה?', ids: [] },
   sp_private: { text: 'המרחב הפרטי מראה מה כל תרבות שומרת לעצמה: כובד, טוהר, זיכרון או קשב.', ids: [] },
   sp_threshold: { text: 'הסף הוא המרחב שבו ההבדל בין התרבויות הכי גלוי: חומה, טקס, מדרגות או טשטוש.', ids: ['mesopotamia', 'celtic'] },
-  sp_communal: { text: 'המרחב הקהילתי מראה למי שייך המרכז: לאל, לשליט או לכולם.', ids: ['africa'] },
+  sp_communal: { text: 'המרחב הקהילתי מראה למי שייך המרכז: לאל, לשליט או לכולם.', ids: ['africa', 'kibbutz'] },
 };
 
 // The fourth level of the comparison: the spaces themselves, as images at one
