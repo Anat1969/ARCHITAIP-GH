@@ -4,6 +4,7 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4173';
+const N = 18; // built-in cultures
 const OUT = process.env.SHOTS || 'shots';
 const CHROME = process.env.CHROME;
 fs.mkdirSync(OUT, { recursive: true });
@@ -131,19 +132,19 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   // Comparison: same level side by side, focus and transpose in the URL
   await page.goto(BASE + '/compare');
   await page.waitForSelector('.cmp');
-  check(await page.locator('.cmp__name').count() === 11, 'comparison has a row per culture');
+  check(await page.locator('.cmp__name').count() === N, 'comparison has a row per culture');
   check(await page.locator('.cmp__group').count() === 4, 'rows grouped by family');
   await page.screenshot({ path: `${OUT}/compare.png` });
   await page.locator('.seg__btn', { hasText: 'DNA' }).click();
   await page.locator('.cmp__col button', { hasText: 'אור' }).click();
   await page.waitForTimeout(300);
   check(page.url().includes('b=dna') && page.url().includes('f=light'), 'band and focus write to URL');
-  check(await page.locator('td.is-focus').count() === 11, 'focus highlights one criterion across all cultures');
+  check(await page.locator('td.is-focus').count() === N, 'focus highlights one criterion across all cultures');
   check(await page.locator('.cmp-insight').isVisible(), 'a focused criterion states its finding');
-  check(await page.locator('td.is-proof').count() === 3, 'the cultures that prove the finding light up');
+  check(await page.locator('td.is-proof').count() === 5, 'the cultures that prove the finding light up');
   await page.locator('.seg__btn', { hasText: 'מרחבים' }).click();
   await page.waitForTimeout(300);
-  check(await page.locator('.cmp-space').count() === 66, 'spaces level: six spaces per culture at one scale');
+  check(await page.locator('.cmp-space').count() === N * 6, 'spaces level: six spaces per culture at one scale');
   await page.screenshot({ path: `${OUT}/compare-spaces.png` });
   await page.goto(BASE + '/compare?b=dna');
   await page.waitForSelector('.cmp');
@@ -157,7 +158,8 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   // Contents tile to culture
   await page.goto(BASE + '/cultures');
   await page.waitForSelector('.tile');
-  check(await page.locator('.tile').count() === 11, 'contents shows 11 culture tiles');
+  check(await page.locator('.tile').count() === N, `contents shows ${N} culture tiles`);
+  check(await page.locator('.tile .local-tag').count() === 4, 'the four local cultures are marked as near');
   await page.locator('.tile', { hasText: 'יפן' }).click();
   await page.waitForURL(/\/c\/japan/);
   await page.waitForSelector('.entry-hero__name');
@@ -196,6 +198,14 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.goto(BASE + '/c/nope');
   await page.waitForSelector('.empty-page');
   check(true, 'unknown culture shows not-found page');
+
+  // Suggested fusions: a world culture beside a local one
+  await page.goto(BASE + '/lab');
+  await page.waitForSelector('.suggest__card');
+  check(await page.locator('.suggest__card').count() >= 6, 'lab suggests fusions between world and near cultures');
+  await page.locator('.suggest__card', { hasText: 'הבדואים בנגב' }).first().click();
+  await page.waitForSelector('.compare');
+  check(page.url().includes('p=bedouin%2Cislamic') || page.url().includes('p=bedouin,islamic'), 'a suggestion picks its pair');
 
   // Lab compare as reader
   await page.goto(BASE + '/lab?p=egypt,japan');
@@ -343,6 +353,12 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
       check(true, 'but the link opens it, marked as waiting');
     } else {
       check(listed === 1, 'the editor sees the waiting fusion in the list');
+      await page.locator('ai-menu .logo').click();
+      await page.locator('ai-menu .item', { hasText: 'ממתינים לאישור (1)' }).click();
+      await page.waitForURL(/\/pending/);
+      await page.waitForSelector('.queue__item');
+      check(await page.locator('.queue__item').count() === 1, 'the A&I menu opens the approvals queue with the waiting fusion');
+      await page.screenshot({ path: `${OUT}/pending.png` });
       await page.goto(BASE + '/f/egypt_japan_x');
       await page.waitForSelector('.bar-btn--approve');
       requests.length = 0;
@@ -481,7 +497,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();
   await mock(page, false);
-  for (const id of ['mesopotamia', 'egypt', 'india', 'china', 'maya', 'israel', 'persia', 'greece', 'celtic', 'japan', 'africa']) {
+  for (const id of ['mesopotamia', 'egypt', 'india', 'china', 'maya', 'israel', 'persia', 'greece', 'celtic', 'japan', 'africa', 'rome', 'islamic', 'gothic', 'bedouin', 'galilee', 'kibbutz', 'whitecity']) {
     await page.goto(`${BASE}/c/${id}`);
     await page.waitForSelector('.print-sheet', { state: 'attached' });
     const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });

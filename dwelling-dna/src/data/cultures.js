@@ -1,3 +1,5 @@
+import { moreCultures } from './cultures-more.js';
+
 export const cultures = [
   {
     id: 'mesopotamia',
@@ -645,5 +647,7 @@ export const cultures = [
     ],
   },
 ];
+
+cultures.push(...moreCultures);
 
 export default cultures;

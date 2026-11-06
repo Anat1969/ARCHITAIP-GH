@@ -94,7 +94,7 @@ export default function Essence() {
         <div className="section-head">
           <span className="mono">FOUR FAMILIES</span>
           <h2>השוני מתחיל במקום שבו נמצא הכאוס</h2>
-          <p className="muted">קריאה היסטורית: אחת עשרה תרבויות, ארבעה מקומות שבהם הן מאתרות את הסכנה. המשפחה קובעת מה הבית צריך לעשות.</p>
+          <p className="muted">קריאה היסטורית: {entries.cultures.length} תרבויות, ארבעה מקומות שבהם הן מאתרות את הסכנה. המשפחה קובעת מה הבית צריך לעשות.</p>
         </div>
         <div className="families__grid">
           {FAMILIES.map((f) => {

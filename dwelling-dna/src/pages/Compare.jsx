@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useData } from '../store/data';
-import { FAMILIES, FUSION_FAMILY, OPEN_FAMILY, LEVELS, FIELD_INSIGHTS, SPACE_FIELDS, familyOf, fieldValue, spaceOf } from '../data/reading';
+import { FAMILIES, FUSION_FAMILY, OPEN_FAMILY, LEVELS, FIELD_INSIGHTS, SPACE_FIELDS, LOCAL_LABEL, familyOf, fieldValue, spaceOf } from '../data/reading';
 
 // The comparison: every culture read on the same criteria, and every criterion
 // of the same level side by side. Cultures can sit in rows or in columns; a
@@ -127,6 +127,7 @@ export default function Compare() {
 
       <div className="cmp-filter" aria-label="בחירת תרבויות">
         <button type="button" className={`pill pill--all ${!picked.length ? 'pill--on' : ''}`} onClick={() => set('p', null)}>כל התרבויות</button>
+        <button type="button" className="pill pill--all pill--local" onClick={() => set('p', entries.all.filter((e) => e.local).map((e) => e.id).join(','))}>רק {LOCAL_LABEL}</button>
         {entries.all.map((e) => (
           <button key={e.id} type="button" className={`pill ${picked.includes(e.id) ? 'pill--on' : ''}`} style={{ '--pc': familyOf(e).color }} aria-pressed={picked.includes(e.id)} onClick={() => togglePick(e.id)}>
             {e.name}
@@ -188,7 +189,7 @@ export default function Compare() {
                       <th scope="row" className="cmp__name">
                         <Link to={linkOf(e)}>
                           <span className="cmp__name-he">{e.name}</span>
-                          <span className="cmp__arch">{e.archetype || 'מיזוג'}</span>
+                          <span className="cmp__arch">{e.archetype || 'מיזוג'}{e.local ? ` · ${LOCAL_LABEL}` : ''}</span>
                         </Link>
                       </th>
                       {fields.map((f) => (
