@@ -2,19 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useData } from '../store/data';
-import { useAuth } from '../store/auth';
 import { FUSION_MODES, VECTORS } from '../lib/dna';
 import { generateFusion } from '../lib/generate';
 
 // The lab is a comparison first and a generator second: setting two or more
 // cultures side by side, vector by vector, is already the insight a lecture
-// needs. Turning that comparison into a fusion is one more step, for the editor.
+// needs. Turning that comparison into a fusion is one more step, open to all.
 
 const MAX = 4;
 
 export default function Lab() {
   const { entries, get, createFusion } = useData();
-  const { editing, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [mode, setMode] = useState('equal');
@@ -65,7 +63,7 @@ export default function Lab() {
     const ok = await createFusion(draft);
     setBusy(false);
     if (ok) navigate(`/f/${draft.id}`);
-    else setError('השמירה נכשלה. ודאי שאת מחוברת כעורכת.');
+    else setError('השמירה נכשלה. נסו שוב בעוד רגע.');
   };
 
   return (
@@ -129,11 +127,10 @@ export default function Lab() {
                 <span className="mono">FUSE</span>
                 <h2>מהשוואה למיזוג</h2>
               </div>
-              {!isAdmin ? (
-                <p className="muted">יצירת מיזוג חדש שמורה לעורכת המחוברת.</p>
-              ) : !editing ? (
-                <p className="muted">עברי למצב עריכה בסרגל העליון כדי ליצור מיזוג.</p>
-              ) : (
+              <p className="muted fuse__who">
+                המיזוג פתוח לכולם, בלי כניסה. כותב אותו <b>היסטוריון</b> של תרבות ואדריכלות, ננס על כתפי ענקים שרואה אחורה אל המקורות וקדימה אל הבית הבא.
+              </p>
+              {(
                 <div className="stack">
                   <div className="modes" role="radiogroup">
                     {FUSION_MODES.map((m) => (
@@ -162,7 +159,7 @@ export default function Lab() {
                   {!draft ? (
                     <>
                       <button type="button" className="btn btn--primary" onClick={run} disabled={busy}>
-                        {busy ? 'Claude ממזג' : `יצירת מיזוג: ${picked.map((p) => p.name).join(' × ')}`}
+                        {busy ? 'ההיסטוריון ממזג' : `יצירת מיזוג: ${picked.map((p) => p.name).join(' × ')}`}
                       </button>
                       {busy && <div className="progress"><span /></div>}
                     </>
