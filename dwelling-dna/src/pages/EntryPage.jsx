@@ -18,8 +18,8 @@ export default function EntryPage({ kind, chapter = 'dna' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const { entries, get, images, updateContent, removeEntry, status } = useData();
-  const { editing } = useAuth();
+  const { entries, get, images, updateContent, removeEntry, approveFusion, status } = useData();
+  const { editing, isAdmin } = useAuth();
   const entry = get(id);
 
   const list = kind === 'fusion' ? entries.fusions : entries.cultures;
@@ -141,6 +141,9 @@ export default function EntryPage({ kind, chapter = 'dna' }) {
             <button type="button" className="bar-btn bar-btn--glass" onClick={fullscreen}>מצב הצגה</button>
             <button type="button" className="bar-btn bar-btn--glass" onClick={printSheet}>ייצוא PDF</button>
             {!isFusion && <Link className="bar-btn bar-btn--glass" to={`/lab?p=${entry.id}`}>למזג עם תרבות אחרת</Link>}
+            {isAdmin && isFusion && entry.approved === false && (
+              <button type="button" className="bar-btn bar-btn--glass bar-btn--approve" onClick={() => approveFusion(entry.id)}>אישור לפרסום</button>
+            )}
             {editing && (isFusion || entry.isCustom) && (
               <button
                 type="button"
@@ -156,6 +159,14 @@ export default function EntryPage({ kind, chapter = 'dna' }) {
           </div>
         </div>
       </header>
+
+      {isFusion && entry.approved === false && (
+        <p className="pending no-print" role="status">
+          <b>ממתין לאישור.</b> {isAdmin
+            ? 'מיזוג של קורא. הוא ייכנס לרשימה הציבורית אחרי שתאשרי אותו.'
+            : 'המיזוג נשמר. כרגע רואים אותו רק את ומי שקיבל את הקישור, והוא ייכנס לרשימה אחרי אישור העורכת.'}
+        </p>
+      )}
 
       <nav className="chapters no-print" aria-label="פרקים">
         <Link to={base + entry.id} className={`chapter ${!onSpaces ? 'chapter--on' : ''}`} aria-current={!onSpaces ? 'page' : undefined}>

@@ -86,7 +86,7 @@ export default function Cultures() {
           <div className="fusion-list">
             {entries.fusions.map((f) => (
               <Link key={f.id} to={`/f/${f.id}`} className="fusion-item" style={{ background: f.gradient }}>
-                <span className="mono">FUSION {pad2(f.index)}</span>
+                <span className="mono">FUSION {pad2(f.index)}{f.approved === false ? ' / ממתין לאישור' : ''}</span>
                 <span className="fusion-item__name">{f.name}</span>
                 <span className="fusion-item__insight">{f.insight}</span>
               </Link>

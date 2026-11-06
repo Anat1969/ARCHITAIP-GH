@@ -2,8 +2,7 @@
 // Both return a complete entry but save nothing - the editor sees the result
 // first and decides whether it enters the magazine.
 
-import { askClaude } from './claude';
-import { fusionCall } from './fusion';
+import { askHistorian, fusionCall } from './fusion';
 import { parseClaudeJson } from './parseClaudeJson';
 import { SPACE_KINDS, blendHex } from './dna';
 
@@ -35,10 +34,9 @@ function normalizePrompts(raw) {
 }
 
 export async function generateCulture({ name, period, region, description }) {
-  const text = await askClaude({
-    model: 'claude-opus-5',
-    maxTokens: 8000,
-    prompt: `אתה מומחה לארכיטקטורה תרבותית. בנה פרופיל אדריכלי מלא עבור:
+  const text = await askHistorian({
+    json: true,
+    prompt: `בנה פרופיל אדריכלי מלא עבור:
 שם: ${name}${period ? `\nתקופה: ${period}` : ''}${region ? `\nאזור: ${region}` : ''}${description ? `\nהערות: ${description}` : ''}
 
 חלץ את ההיגיון המרחבי, לא את הקישוט. החזר JSON בלבד, כל מחרוזת בשורה אחת:

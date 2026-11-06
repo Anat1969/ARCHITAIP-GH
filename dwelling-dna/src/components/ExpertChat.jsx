@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { askClaude } from '../lib/claude';
+import { askHistorian } from '../lib/fusion';
 
-const EXPERT_SYSTEM = `אתה מומחה מולטי-דיסציפלינרי באנתרופולוגיה, ארכיאולוגיה וארכיטקטורה.
+const EXPERT_SYSTEM = `כאן אתה עונה על שאלה אחת, כהיסטוריון שמכיר גם אנתרופולוגיה וארכיאולוגיה.
 התפקיד: לתרגם תרבות לשפה מרחבית דרך עדויות ממשיות.
 אורך: משפט אחד עד שלושה משפטים קצרים.
 טון: חד וברור, מעוגן בעדות כשיש. עונה על "למה", לא רק על "מה".
@@ -27,9 +27,7 @@ export default function ExpertChat({ entry }) {
     setLog((l) => [...l, { q: text, a: null }]);
     let answer;
     try {
-      answer = await askClaude({
-        model: 'claude-haiku-4-5',
-        maxTokens: 2048,
+      answer = await askHistorian({
         system: `${EXPERT_SYSTEM}\n\nהקשר: "${entry.name}". ארכיטייפ: ${entry.archetype ?? ''}. כאוס: ${entry.chaos}. סדר: ${entry.order}. תפקיד: ${entry.role}.`,
         prompt: text,
       });

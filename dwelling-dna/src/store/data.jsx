@@ -11,6 +11,7 @@ import { allPending, deletePending, pendingKey, prepareImage, putPending, upload
 // own tables and are laid over the entry when it is read.
 
 const SESSION_ID = 'default';
+const MINE = 'architaip:my-fusions';
 const DataContext = createContext(null);
 
 function cultureFromRow(r) {
@@ -38,7 +39,7 @@ function fusionFromRow(r) {
     chaos: r.chaos, order: r.order_concept, role: r.role, colors: r.colors,
     gradient: r.gradient, vectors: r.vectors ?? {}, insight: r.insight,
     paragraph: r.paragraph, post: r.post, spaces: r.spaces ?? [], prompts: r.prompts ?? [],
-    created_at: r.created_at,
+    created_at: r.created_at, approved: r.approved !== false,
   };
 }
 
@@ -110,15 +111,28 @@ export function DataProvider({ children }) {
     return true;
   }, []);
 
+  // Fusions this browser made: shown to their maker before the editor approves.
+  const [mine, setMine] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(MINE) || '[]'); } catch { return []; }
+  });
+  const addMine = useCallback((id) => setMine((prev) => {
+    const next = [...new Set([...prev, id])];
+    try { localStorage.setItem(MINE, JSON.stringify(next)); } catch { /* private mode */ }
+    return next;
+  }), []);
+
   const entries = useMemo(() => {
     const cultures = [...baseCultures, ...custom].map((c, i) => ({
       ...c, ...(content[c.id] ?? {}), kind: 'culture', index: i + 1,
     }));
-    const fused = fusions.map((f, i) => ({ ...f, ...(content[f.id] ?? {}), kind: 'fusion', index: i + 1 }));
-    return { cultures, fusions: fused, all: [...cultures, ...fused] };
-  }, [custom, fusions, content]);
+    const fused = fusions.map((f, i) => ({ ...f, ...(content[f.id] ?? {}), kind: 'fusion', index: i + 1, mine: mine.includes(f.id) }));
+    // Lists show approved fusions, plus the reader's own and, for the editor,
+    // the ones waiting. A direct link opens any fusion.
+    const listed = fused.filter((f) => f.approved !== false || f.mine || isAdmin);
+    return { cultures, fusions: listed, all: [...cultures, ...listed], every: [...cultures, ...fused] };
+  }, [custom, fusions, content, mine, isAdmin]);
 
-  const get = useCallback((id) => entries.all.find((e) => e.id === id) ?? null, [entries]);
+  const get = useCallback((id) => entries.every.find((e) => e.id === id) ?? null, [entries]);
 
   const updateContent = useCallback((id, patch) => {
     const next = { ...(contentRef.current[id] ?? {}), ...patch };
@@ -243,8 +257,20 @@ export function DataProvider({ children }) {
     const saving = fusionCall('save', { token, row: fusionToRow(entry) })
       .then(() => ({ data: { ok: true }, error: null }))
       .catch((err) => ({ data: null, error: { code: 'save', message: err.message } }));
-    const ok = await track(saving, 'המיזוג נשמר');
-    if (ok) setFusions((prev) => [...prev, entry]);
+    const ok = await track(saving, isAdmin ? 'המיזוג פורסם' : 'המיזוג נשמר וממתין לאישור');
+    if (ok) {
+      addMine(entry.id);
+      setFusions((prev) => [...prev, { ...entry, approved: isAdmin }]);
+    }
+    return ok;
+  }, [track, isAdmin, addMine]);
+
+  const approveFusion = useCallback(async (id, approved = true) => {
+    const saving = fusionCall('approve', { id, approved })
+      .then(() => ({ data: { ok: true }, error: null }))
+      .catch((err) => ({ data: null, error: { code: 'approve', message: err.message } }));
+    const ok = await track(saving, approved ? 'המיזוג פורסם' : 'המיזוג הוחזר להמתנה');
+    if (ok) setFusions((prev) => prev.map((f) => (f.id === id ? { ...f, approved } : f)));
     return ok;
   }, [track]);
 
@@ -259,8 +285,8 @@ export function DataProvider({ children }) {
 
   const value = useMemo(() => ({
     status, entries, images: shownImages, get, save, isPending,
-    updateContent, setImage, attachImage, removeImage, createCulture, createFusion, removeEntry,
-  }), [status, entries, shownImages, get, save, isPending, updateContent, setImage, attachImage, removeImage, createCulture, createFusion, removeEntry]);
+    updateContent, setImage, attachImage, removeImage, createCulture, createFusion, approveFusion, removeEntry,
+  }), [status, entries, shownImages, get, save, isPending, updateContent, setImage, attachImage, removeImage, createCulture, createFusion, approveFusion, removeEntry]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
