@@ -3,6 +3,7 @@
 // first and decides whether it enters the magazine.
 
 import { askClaude } from './claude';
+import { fusionCall } from './fusion';
 import { parseClaudeJson } from './parseClaudeJson';
 import { SPACE_KINDS, blendHex } from './dna';
 
@@ -88,32 +89,14 @@ export async function generateCulture({ name, period, region, description }) {
 }
 
 export async function generateFusion(parents, mode, weights, customName = '') {
-  const modeLabel = { equal: 'שווה', weighted: 'משוקלל', dominant: 'דומיננטי' }[mode];
-  const lines = parents.map((p, i) =>
-    `תרבות ${i + 1} (${p.name}, משקל ${Math.round(weights[i] * 100)}%): כאוס="${p.chaos}", סדר="${p.order}", תפקיד="${p.role}", וקטורים=${JSON.stringify(p.vectors)}`,
-  ).join('\n');
-
-  const text = await askClaude({
-    model: 'claude-opus-5',
-    maxTokens: 8000,
-    prompt: `אתה מומחה לארכיטקטורה תרבותית. סנתז מיזוג ${modeLabel} בין ${parents.map((p) => p.name).join(' + ')}.
-${mode === 'dominant' ? `${parents[0].name} מובילה, האחרות מתבלות.` : ''}
-${lines}
-
-חשוף את המתח בין ההיגיונות, לא ממוצע שלהם. החזר JSON בלבד, כל מחרוזת בשורה אחת:
-{
-  "chaos":"", "order":"", "role":"", "insight":"", "paragraph":"", "post":"",
-  "vectors":{"material":"","light":"","threshold":"","proportion":"","narrative":""},
-  "spaces":[{"caption":"מרחב פרטי"},{"caption":"מרחב מעבר"},{"caption":"מרחב קהילתי"}],
-  "prompts":[
-    {"text":"English prompt, private space of the fusion, documentary realism, professional architecture photography"},
-    {"text":"English prompt, threshold"},
-    {"text":"English prompt, communal space"}
-  ]
-}`,
+  // The historian runs on the public fusion function (Gemini, free tier), so
+  // every reader can fuse. The text comes back with a signed token; only text
+  // carrying that token can be saved.
+  const d = await fusionCall('generate', {
+    mode,
+    weights,
+    parents: parents.map((p) => ({ id: p.id, name: p.name, chaos: p.chaos, order: p.order, role: p.role, vectors: p.vectors })),
   });
-
-  const d = parseClaudeJson(text);
   const t = mode === 'dominant' ? 0.2 : 0.5;
   const a = parents[0].colors ?? {};
   const b = parents[parents.length - 1].colors ?? {};
@@ -140,5 +123,6 @@ ${lines}
     insight: d.insight ?? '', paragraph: d.paragraph ?? '', post: d.post ?? '',
     spaces: normalizeSpaces(d.spaces, colors, gradient),
     prompts: normalizePrompts(d.prompts),
+    token: d.token,
   };
 }

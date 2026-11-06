@@ -395,7 +395,7 @@ p { margin: 0; }
 
 .compare { display: grid; border-radius: 18px; overflow: hidden; background: var(--card); box-shadow: var(--shadow-1); overflow-x: auto; }
 .compare__row { display: grid; grid-template-columns: 140px repeat(var(--cols), minmax(180px, 1fr)); border-bottom: 1px solid var(--line); min-width: 0; }
-.compare__row--head { position: sticky; top: 0; }
+.compare__row--head { position: sticky; top: var(--bar-h); z-index: 2; background: var(--card); box-shadow: 0 6px 12px -8px rgba(0,0,0,.18); }
 .compare__row--triad { background: rgba(0,0,0,.02); }
 .compare__name { padding: 18px 16px; color: #fff; font-size: 24px; font-weight: 200; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
 .compare__key { display: grid; gap: 2px; padding: 14px 16px; font-weight: 500; border-inline-end: 1px solid var(--line); }

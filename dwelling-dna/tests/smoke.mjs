@@ -41,6 +41,13 @@ async function mock(page, admin) {
     if (url.pathname.startsWith('/rest/v1/rpc/architaip_is_admin')) return json(admin);
     if (url.pathname.startsWith('/rest/v1/')) return req.method() === 'GET' ? json([]) : json([], 201);
     if (url.pathname.includes('/functions/v1/architaip-fal-image')) return json({ url: 'https://example.com/gen.jpg', permanent: true });
+    if (url.pathname.includes('/functions/v1/architaip-fusion')) {
+      // Public: no editor key. Generate returns signed text; save needs the token.
+      const body = JSON.parse(req.postData() || '{}');
+      requests.push({ method: 'POST', path: `/fusion/${body.action}`, body: req.postData() });
+      if (body.action === 'generate') return json({ ...JSON.parse(FUSION_JSON), token: 'signed.token' });
+      if (body.action === 'save') return body.token === 'signed.token' ? json({ ok: true }) : json({ error: 'bad token' }, 403);
+    }
     if (url.pathname.includes('/functions/v1/architaip-claude')) {
       const body = JSON.parse(req.postData() || '{}');
       const isFusion = body.messages?.[0]?.content?.includes('מיזוג');
@@ -191,7 +198,17 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.goto(BASE + '/lab?p=egypt,japan');
   await page.waitForSelector('.compare');
   check(await page.locator('.compare__row').count() === 9, 'lab compares 2 cultures across 8 rows + head');
-  check(await page.locator('text=שמורה לעורכת').isVisible(), 'reader cannot fuse');
+  check(await page.locator('.modes').isVisible(), 'reader can fuse without signing in');
+  check(await page.locator('.btn--primary', { hasText: 'יצירת מיזוג' }).isVisible(), 'fuse button open to readers');
+  requests.length = 0;
+  await page.locator('.btn--primary', { hasText: 'יצירת מיזוג' }).click();
+  await page.waitForSelector('.draft-card');
+  check(requests.some((r) => r.path === '/fusion/generate') && !requests.some((r) => r.path.includes('architaip-claude')), 'reader fusion runs on the free historian, not Claude');
+  check(!(await page.locator('.dialog').count()), 'no sign-in dialog when a reader fuses');
+  await page.locator('.btn', { hasText: 'אישור ופתיחת המיזוג' }).click();
+  await page.waitForURL(/\/f\//);
+  const readerSave = requests.find((r) => r.path === '/fusion/save');
+  check(readerSave && readerSave.body.includes('signed.token') && readerSave.body.includes('fusion_logic'), 'reader saves the fusion with the signed token');
   await page.screenshot({ path: `${OUT}/lab.png`, fullPage: true });
 
   // Read route goes to last read
@@ -272,11 +289,11 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   requests.length = 0;
   await page.locator('.btn--primary', { hasText: 'יצירת מיזוג' }).click();
   await page.waitForSelector('.draft-card');
-  check(requests.some((r) => r.path.includes('architaip-claude')), 'fusion calls Claude');
+  check(requests.some((r) => r.path === '/fusion/generate'), 'fusion calls the historian');
   await page.screenshot({ path: `${OUT}/lab-draft.png`, fullPage: true });
   await page.locator('.btn', { hasText: 'אישור ופתיחת המיזוג' }).click();
   await page.waitForURL(/\/f\//);
-  const fusionWrite = requests.find((r) => r.path === '/edit/fusion');
+  const fusionWrite = requests.find((r) => r.path === '/fusion/save');
   check(fusionWrite && fusionWrite.body.includes('fusion_logic'), 'fusion saved with lineage');
   await page.waitForSelector('.lineage');
   check(await page.locator('.lineage__row').count() === 2, 'fusion page shows lineage');

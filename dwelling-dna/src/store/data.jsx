@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import baseCultures from '../data/cultures';
 import { edit, supabase } from '../lib/supabase';
+import { fusionCall } from '../lib/fusion';
 import { useAuth } from './auth';
 import { allPending, deletePending, pendingKey, prepareImage, putPending, uploadImage } from '../lib/images';
 
@@ -235,9 +236,15 @@ export function DataProvider({ children }) {
     return ok;
   }, [track]);
 
+  // Open to every reader: the public fusion function saves the draft only if
+  // its text carries the historian's signed token.
   const createFusion = useCallback(async (fusion) => {
-    const ok = await track(edit('fusion', { row: fusionToRow(fusion) }), 'המיזוג נשמר');
-    if (ok) setFusions((prev) => [...prev, fusion]);
+    const { token, ...entry } = fusion;
+    const saving = fusionCall('save', { token, row: fusionToRow(entry) })
+      .then(() => ({ data: { ok: true }, error: null }))
+      .catch((err) => ({ data: null, error: { code: 'save', message: err.message } }));
+    const ok = await track(saving, 'המיזוג נשמר');
+    if (ok) setFusions((prev) => [...prev, entry]);
     return ok;
   }, [track]);
 
