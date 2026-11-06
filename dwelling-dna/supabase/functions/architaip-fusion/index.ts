@@ -6,8 +6,13 @@
 //           reader publishes is always what the historian wrote, never text
 //           typed into the request. Deleting stays with the editor.
 //
-// No editor key is needed. Abuse is held back by a per-address rate limit and
-// by strict input limits; Gemini's free tier costs nothing.
+// ask:      the same historian for the editor's own tools (adding a culture,
+//           the expert chat). Editor only.
+// approve:  a fusion a reader saved waits outside the public list until the
+//           editor approves it. Editor only.
+//
+// Generate and save need no editor key. Abuse is held back by a per-address
+// rate limit and by strict input limits; Gemini's free tier costs nothing.
 //
 // Secrets:  GEMINI_API_KEY (shared in this project), SUPABASE_SERVICE_ROLE_KEY
 // Deploy:   supabase functions deploy architaip-fusion
@@ -48,6 +53,30 @@ async function hmac(text: string) {
 }
 const b64 = (s: string) => btoa(String.fromCharCode(...enc.encode(s)));
 const unb64 = (s: string) => new TextDecoder().decode(Uint8Array.from(atob(s), (c) => c.charCodeAt(0)));
+
+// ── The editor: personal key (hash in architaip_editor_keys) or admin session ──
+const service = () => ({ apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` });
+async function isEditor(req: Request): Promise<boolean> {
+  try {
+    const key = req.headers.get('x-editor-key') ?? '';
+    if (key.length >= 16) {
+      const digest = await crypto.subtle.digest('SHA-256', enc.encode(key));
+      const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+      const rows = await fetch(`${SUPABASE_URL}/rest/v1/architaip_editor_keys?select=key_hash&key_hash=eq.${hash}`, { headers: service() }).then((r) => r.json());
+      if (Array.isArray(rows) && rows.length > 0) return true;
+    }
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    if (!token.startsWith('ey')) return false;
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { Authorization: `Bearer ${token}`, apikey: SERVICE_KEY } });
+    if (!userRes.ok) return false;
+    const email = String((await userRes.json())?.email ?? '').toLowerCase();
+    if (!email) return false;
+    const admins = await fetch(`${SUPABASE_URL}/rest/v1/architaip_admins?select=email&email=eq.${encodeURIComponent(email)}`, { headers: service() }).then((r) => r.json());
+    return Array.isArray(admins) && admins.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 // ── Input ──
 const str = (v: unknown, max: number) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -105,7 +134,7 @@ const SCHEMA = {
   required: ['chaos', 'order', 'role', 'insight', 'paragraph', 'post', 'vectors', 'spaces', 'prompts'],
 };
 
-async function viaGemini(key: string, user: string) {
+async function viaGemini(key: string, user: string, system = SYSTEM, schema: unknown = SCHEMA) {
   let last: unknown = new Error('no model answered');
   for (const model of MODELS) {
     try {
@@ -113,16 +142,19 @@ async function viaGemini(key: string, user: string) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM }] },
+          systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: 'user', parts: [{ text: user }] }],
-          generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.6 },
+          generationConfig: schema
+            ? { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.6 }
+            : { responseMimeType: schema === null ? 'text/plain' : 'application/json', temperature: 0.6 },
         }),
         signal: AbortSignal.timeout(40000),
       });
       if (!r.ok) throw Object.assign(new Error(`Gemini ${model} ${r.status}`), { status: r.status });
       const j = await r.json();
       const text = j?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
-      return JSON.parse(text);
+      if (!text.trim()) throw new Error(`Gemini ${model} empty`);
+      return schema === null ? text : JSON.parse(text);
     } catch (err) {
       last = err;
       const st = (err as { status?: number }).status;
@@ -209,6 +241,8 @@ Deno.serve(async (req) => {
         ? (row.spaces as Record<string, unknown>[]).slice(0, 3).map((s, i) => ({ id: safeId(s.id), label: str(s.label, 30), caption: content.spaces[i]?.caption ?? '', gradient: /^linear-gradient\([#\w\s,.%()-]+\)$/.test(String(s.gradient)) ? String(s.gradient) : null }))
         : [],
       prompts: content.prompts.map((p: { text: string }, i: number) => ({ label: ['חוץ', 'סף', 'פנים'][i], text: p.text })),
+      // A reader's fusion waits for the editor before it joins the public list.
+      approved: await isEditor(req),
     };
     const res = await fetch(`${SUPABASE_URL}/rest/v1/architaip_fusions`, {
       method: 'POST',
@@ -220,6 +254,38 @@ Deno.serve(async (req) => {
     const saved = await res.json().catch(() => []);
     if (!Array.isArray(saved) || saved.length === 0) return json({ error: 'המיזוג כבר קיים.' }, 409);
     return json({ ok: true, id: record.id });
+  }
+
+  if (body.action === 'ask') {
+    if (!(await isEditor(req))) return json({ error: 'editor only' }, 403);
+    if (limited(req, 20, 400)) return json({ error: 'יותר מדי בקשות ברצף. נסו שוב בעוד דקה.' }, 429);
+    const key = Deno.env.get('GEMINI_API_KEY')?.trim();
+    if (!key) return json({ error: 'ההיסטוריון לא מחובר כרגע (חסר מפתח Gemini).' }, 503);
+    const prompt = String(body.prompt ?? '').slice(0, 12000);
+    if (!prompt.trim()) return json({ error: 'prompt is required' }, 400);
+    const extra = String(body.system ?? '').slice(0, 4000);
+    const system = extra ? `${SYSTEM}\n\n${extra}` : SYSTEM;
+    try {
+      // json: free-form JSON (false = no schema), otherwise plain text (null).
+      const out = await viaGemini(key, prompt, system, body.json ? false : null);
+      const text = typeof out === 'string' ? out : JSON.stringify(out);
+      return json({ text: text.replace(/[\u0600-\u06FF]/g, (c) => LOOKALIKE[c] ?? ''), engine: 'gemini' });
+    } catch (err) {
+      const st = (err as { status?: number }).status;
+      return json({ error: st === 429 ? 'המכסה החינמית של ההיסטוריון נגמרה לרגע. נסו שוב בעוד דקה.' : 'ההיסטוריון לא ענה. נסו שוב.' }, 503);
+    }
+  }
+
+  if (body.action === 'approve') {
+    if (!(await isEditor(req))) return json({ error: 'editor only' }, 403);
+    const id = safeId(body.id);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/architaip_fusions?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { ...service(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ approved: body.approved !== false }),
+    });
+    if (!res.ok) return json({ error: `approve ${res.status}` }, 500);
+    return json({ ok: true });
   }
 
   return json({ error: 'unknown action' }, 400);

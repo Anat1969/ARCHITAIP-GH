@@ -771,3 +771,8 @@ mark { background: linear-gradient(180deg, transparent 52%, #f3dc6b 52%); color:
 .cmp-space__cap { font-size: 12.5px; line-height: 1.4; color: var(--ink-2); font-weight: 400 !important; }
 .cmp--focus .cmp__cell--space.is-focus { min-width: 240px; }
 .cmp__band--ancestral, .cmp__band--modern { border-bottom-color: var(--ink) !important; }
+
+/* A reader's fusion before the editor approves it */
+.pending { margin: 0; padding: 10px var(--gutter); background: #fff3c4; font-size: 14.5px; color: var(--ink-2); border-bottom: 1px solid rgba(201,162,39,.4); }
+.bar-btn--approve { background: rgba(47,107,63,.55); border-color: rgba(160,230,180,.6); }
+.bar-btn--approve:hover { background: rgba(47,107,63,.8); }

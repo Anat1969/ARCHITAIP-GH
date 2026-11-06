@@ -47,6 +47,9 @@ async function mock(page, admin) {
       requests.push({ method: 'POST', path: `/fusion/${body.action}`, body: req.postData() });
       if (body.action === 'generate') return json({ ...JSON.parse(FUSION_JSON), token: 'signed.token' });
       if (body.action === 'save') return body.token === 'signed.token' ? json({ ok: true }) : json({ error: 'bad token' }, 403);
+      const editor = req.headers()['x-editor-key'] === TEST_KEY;
+      if (body.action === 'ask') return editor ? json({ text: 'תשובת מומחה קצרה.' }) : json({ error: 'editor only' }, 403);
+      if (body.action === 'approve') return editor ? json({ ok: true }) : json({ error: 'editor only' }, 403);
     }
     if (url.pathname.includes('/functions/v1/architaip-claude')) {
       const body = JSON.parse(req.postData() || '{}');
@@ -209,6 +212,12 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForURL(/\/f\//);
   const readerSave = requests.find((r) => r.path === '/fusion/save');
   check(readerSave && readerSave.body.includes('signed.token') && readerSave.body.includes('fusion_logic'), 'reader saves the fusion with the signed token');
+  await page.waitForSelector('.pending');
+  check((await page.locator('.pending').innerText()).includes('ממתין לאישור'), 'reader fusion waits for the editor, and says so');
+  check(!(await page.locator('.bar-btn--approve').count()), 'reader cannot approve');
+  await page.locator('.topbar__link', { hasText: 'תרבויות' }).click();
+  await page.waitForSelector('.fusion-item');
+  check((await page.locator('.fusion-item').innerText()).includes('ממתין לאישור'), 'the maker sees their own fusion in the list, marked as waiting');
   await page.screenshot({ path: `${OUT}/lab.png`, fullPage: true });
 
   // Read route goes to last read
@@ -269,7 +278,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForSelector('.expert');
   await page.locator('.expert .chip').first().click();
   await page.waitForSelector('text=תשובת מומחה קצרה.');
-  check(true, 'expert answers');
+  check(requests.some((r) => r.path === '/fusion/ask'), 'expert answers through the free historian');
   await page.screenshot({ path: `${OUT}/culture-admin.png`, fullPage: false });
 
   // Toggle to reading mode
@@ -312,6 +321,38 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   check(dlgTop >= 59, 'dialog opens beneath the top bar');
   await page.screenshot({ path: `${OUT}/add-culture.png` });
   await ctx.close();
+}
+
+// ── A reader's fusion waits; the editor approves it ──
+{
+  const PENDING = { id: 'egypt_japan_x', name: 'מצרים × יפן', lineage: { parents: ['egypt', 'japan'], parent_names: ['מצרים', 'יפן'], parent_weights: [0.5, 0.5], fusion_logic: 'equal' }, chaos: 'כאוס', order_concept: 'סדר', role: 'גשר', vectors: {}, spaces: [], prompts: [], approved: false };
+  for (const admin of [false, true]) {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(e.message));
+    await mock(page, admin);
+    await page.route(`https://${REF}.supabase.co/rest/v1/architaip_fusions**`, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([PENDING]) }));
+    await page.goto(BASE + '/cultures');
+    await page.waitForSelector('.tile');
+    await page.waitForTimeout(500);
+    const listed = await page.locator('.fusion-item').count();
+    if (!admin) {
+      check(listed === 0, 'a stranger does not see a fusion that waits for approval');
+      await page.goto(BASE + '/f/egypt_japan_x');
+      await page.waitForSelector('.pending');
+      check(true, 'but the link opens it, marked as waiting');
+    } else {
+      check(listed === 1, 'the editor sees the waiting fusion in the list');
+      await page.goto(BASE + '/f/egypt_japan_x');
+      await page.waitForSelector('.bar-btn--approve');
+      requests.length = 0;
+      await page.locator('.bar-btn--approve').click();
+      await page.waitForTimeout(600);
+      check(requests.some((r) => r.path === '/fusion/approve' && r.body.includes('egypt_japan_x')), 'the editor approves it');
+      check(!(await page.locator('.pending').count()), 'approved: the waiting notice is gone');
+    }
+    await ctx.close();
+  }
 }
 
 // ── Opening the editor link ──
