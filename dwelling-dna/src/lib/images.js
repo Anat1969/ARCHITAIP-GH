@@ -1,11 +1,12 @@
 // Getting an image into a frame: from a file, a drop, a paste or a link.
 //
-// Saving needs the editor's session, but placing an image must never wait for
-// it. An image placed before signing in is kept in this browser (IndexedDB, so
-// it survives the sign-in redirect) and shown at once; it is uploaded as soon
-// as the editor is signed in.
+// Anyone can place an image, from any browser: it goes straight to storage.
+// The editor's image is published at once; a reader's waits for her approval.
+// Only when there is no connection does an image wait in this browser
+// (IndexedDB), and it is sent the moment the connection is back.
 
 import { edit, supabase } from './supabase';
+import { fusionCall } from './fusion';
 
 const BUCKET = 'architaip-media';
 const DB = 'architaip';
@@ -67,7 +68,18 @@ export async function uploadImage(entryId, slot, blob) {
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
-// ── Images waiting for the editor to sign in ────────────────────────────────
+/** Any reader: upload under submissions/ and record it. Returns { status, url }. */
+export async function submitImage(entryId, slot, blob) {
+  const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : blob.type === 'image/gif' ? 'gif' : 'jpg';
+  const signed = await fusionCall('sign_image', { culture_id: entryId, slot, ext });
+  const { error } = await supabase.storage.from(BUCKET).uploadToSignedUrl(signed.path, signed.token, blob, {
+    contentType: blob.type || 'image/jpeg',
+  });
+  if (error) throw new Error(error.message);
+  return fusionCall('submit_image', { culture_id: entryId, slot, path: signed.path });
+}
+
+// ── Images waiting for a connection ──────────────────────────────────────────
 
 function open() {
   return new Promise((resolve, reject) => {

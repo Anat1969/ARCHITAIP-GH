@@ -11,6 +11,11 @@
 // approve:  a fusion a reader saved waits outside the public list until the
 //           editor approves it. Editor only.
 //
+// images:   anyone can place an image in a frame. sign_image hands out a
+//           one-time upload under submissions/, submit_image records it.
+//           The editor's image is published at once; a reader's waits in
+//           architaip_image_submissions until approve_image (editor only).
+//
 // Generate and save need no editor key. Abuse is held back by a per-address
 // rate limit and by strict input limits; Gemini's free tier costs nothing.
 //
@@ -286,6 +291,75 @@ Deno.serve(async (req) => {
     });
     if (!res.ok) return json({ error: `approve ${res.status}` }, 500);
     return json({ ok: true });
+  }
+
+  // ── Images, open to everyone ──
+  const BUCKET = 'architaip-media';
+  const SLOT = /^(private|threshold|communal|prompt_[0-2])$/;
+  const publicUrl = (path: string) => `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+
+  async function publishImage(cultureId: string, slot: string, url: string) {
+    const got = await fetch(`${SUPABASE_URL}/rest/v1/architaip_culture_images?select=images&culture_id=eq.${cultureId}&session_id=eq.default`, { headers: service() }).then((r) => r.json()).catch(() => []);
+    const images = { ...((Array.isArray(got) && got[0]?.images) || {}), [slot]: url };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/architaip_culture_images?on_conflict=culture_id,session_id`, {
+      method: 'POST',
+      headers: { ...service(), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ culture_id: cultureId, session_id: 'default', images, updated_at: new Date().toISOString() }),
+    });
+    if (!res.ok) throw new Error(`images ${res.status}`);
+  }
+
+  if (body.action === 'sign_image') {
+    if (limited(req, 12, 120)) return json({ error: 'יותר מדי תמונות ברצף. נסו שוב בעוד דקה.' }, 429);
+    const cultureId = safeId(body.culture_id);
+    const slot = String(body.slot ?? '');
+    const ext = ['jpg', 'png', 'webp', 'gif'].includes(String(body.ext)) ? String(body.ext) : 'jpg';
+    if (!cultureId || !SLOT.test(slot)) return json({ error: 'bad slot' }, 400);
+    const path = `submissions/${cultureId}/${slot}-${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}.${ext}`;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/upload/sign/${BUCKET}/${path}`, { method: 'POST', headers: { ...service(), 'Content-Type': 'application/json' }, body: '{}' });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.url) return json({ error: data?.message ?? `sign ${res.status}` }, 502);
+    const token = new URL(`http://x${data.url}`).searchParams.get('token');
+    return json({ path, token });
+  }
+
+  if (body.action === 'submit_image') {
+    if (limited(req, 12, 120)) return json({ error: 'יותר מדי תמונות ברצף. נסו שוב בעוד דקה.' }, 429);
+    const cultureId = safeId(body.culture_id);
+    const slot = String(body.slot ?? '');
+    const path = String(body.path ?? '');
+    if (!cultureId || !SLOT.test(slot) || !path.startsWith(`submissions/${cultureId}/${slot}-`) || path.includes('..')) return json({ error: 'bad path' }, 400);
+    const head = await fetch(publicUrl(path), { method: 'HEAD' });
+    if (!head.ok) return json({ error: 'the image did not arrive' }, 400);
+    const url = publicUrl(path);
+    if (await isEditor(req)) {
+      await publishImage(cultureId, slot, url);
+      return json({ ok: true, status: 'approved', url });
+    }
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/architaip_image_submissions`, {
+      method: 'POST',
+      headers: { ...service(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ culture_id: cultureId, slot, url }),
+    });
+    const rows = await res.json().catch(() => []);
+    if (!res.ok) return json({ error: `submit ${res.status}` }, 500);
+    return json({ ok: true, status: 'pending', url, id: rows?.[0]?.id });
+  }
+
+  if (body.action === 'approve_image' || body.action === 'reject_image') {
+    if (!(await isEditor(req))) return json({ error: 'editor only' }, 403);
+    const id = String(body.id ?? '').replace(/[^0-9a-f-]/gi, '');
+    const rows = await fetch(`${SUPABASE_URL}/rest/v1/architaip_image_submissions?id=eq.${id}&select=*`, { headers: service() }).then((r) => r.json()).catch(() => []);
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) return json({ error: 'not found' }, 404);
+    const approve = body.action === 'approve_image';
+    if (approve) await publishImage(row.culture_id, row.slot, row.url);
+    await fetch(`${SUPABASE_URL}/rest/v1/architaip_image_submissions?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { ...service(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: approve ? 'approved' : 'rejected' }),
+    });
+    return json({ ok: true, culture_id: row.culture_id, slot: row.slot, url: row.url });
   }
 
   return json({ error: 'unknown action' }, 400);

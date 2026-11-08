@@ -51,6 +51,9 @@ async function mock(page, admin) {
       const editor = req.headers()['x-editor-key'] === TEST_KEY;
       if (body.action === 'ask') return editor ? json({ text: 'תשובת מומחה קצרה.' }) : json({ error: 'editor only' }, 403);
       if (body.action === 'approve') return editor ? json({ ok: true }) : json({ error: 'editor only' }, 403);
+      if (body.action === 'sign_image') return json({ path: `submissions/${body.culture_id}/${body.slot}-1-x.png`, token: 'signed-token' });
+      if (body.action === 'submit_image') return json({ ok: true, status: editor ? 'approved' : 'pending', url: `https://example.com/sub-${body.slot}.png` });
+      if (body.action === 'approve_image' || body.action === 'reject_image') return editor ? json({ ok: true }) : json({ error: 'editor only' }, 403);
     }
     if (url.pathname.includes('/functions/v1/architaip-claude')) {
       const body = JSON.parse(req.postData() || '{}');
@@ -355,6 +358,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
     page.on('pageerror', (e) => errors.push(e.message));
     await mock(page, admin);
     await page.route(`https://${REF}.supabase.co/rest/v1/architaip_fusions**`, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([PENDING]) }));
+    await page.route(`https://${REF}.supabase.co/rest/v1/architaip_image_submissions**`, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: '11111111-2222-3333-4444-555555555555', culture_id: 'egypt', slot: 'threshold', url: 'https://example.com/q.png', status: 'pending' }]) }));
     await page.goto(BASE + '/cultures');
     await page.waitForSelector('.tile');
     await page.waitForTimeout(500);
@@ -367,10 +371,16 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
     } else {
       check(listed === 1, 'the editor sees the waiting fusion in the list');
       await page.locator('ai-menu .logo').click();
-      await page.locator('ai-menu .item', { hasText: 'ממתינים לאישור (1)' }).click();
+      await page.locator('ai-menu .item', { hasText: 'ממתינים לאישור (2)' }).click();
       await page.waitForURL(/\/pending/);
       await page.waitForSelector('.queue__item');
       check(await page.locator('.queue__item').count() === 1, 'the A&I menu opens the approvals queue with the waiting fusion');
+      check(await page.locator('.queue-image').count() === 1, 'the queue shows the image a reader submitted');
+      requests.length = 0;
+      await page.locator('.queue-image .btn--primary').click();
+      await page.waitForTimeout(500);
+      check(requests.some((r) => r.path === '/fusion/approve_image'), 'the editor approves a reader image');
+      check(!(await page.locator('.queue-image').count()), 'approved image leaves the queue');
       await page.screenshot({ path: `${OUT}/pending.png` });
       await page.goto(BASE + '/f/egypt_japan_x');
       await page.waitForSelector('.bar-btn--approve');
@@ -419,14 +429,17 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
     el.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
   }, { index, b64: PNG });
 
-  // Reader drops: the image shows at once, waits, and sign-in opens
+  // Reader drops: straight to the server, shown at once, waits for approval
+  requests.length = 0;
   await dropOn(0);
-  await page.waitForSelector('text=ממתין לשמירה');
+  await page.waitForSelector('text=ממתין לאישור');
+  check(requests.some((r) => r.path === '/fusion/sign_image') && requests.some((r) => r.path.includes('/upload/sign/architaip-media/submissions/persia/private')), 'a reader image uploads to the server, no sign-in');
+  check(requests.some((r) => r.path === '/fusion/submit_image'), 'the reader image is submitted for approval');
   const bg = await page.locator('.frame__image').first().evaluate((el) => el.style.backgroundImage);
-  check(bg.includes('blob:'), 'dropped image shows immediately in the frame');
-  await page.waitForTimeout(400);
+  check(bg.includes('example.com/sub-private'), 'the uploaded image shows in the frame');
+  await page.waitForTimeout(300);
   check(!(await page.locator('.dialog').count()), 'no dialog opens when an image is placed');
-  check(await page.locator('text=התמונה שמורה בדפדפן').isVisible(), 'top bar says the image waits in this browser');
+  check(await page.locator('text=וממתינה לאישור').isVisible(), 'top bar says the image is saved and waits for approval');
   await page.screenshot({ path: `${OUT}/drop-pending.png` });
 
   // Paste onto a hovered frame
@@ -437,26 +450,21 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
     dt.items.add(new File([bytes], 'y.png', { type: 'image/png' }));
     window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
   }, PNG);
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(700);
   check(await page.locator('.frame__badge').count() === 2, 'pasted image lands in the hovered frame');
 
-  // Survives reload, then uploads once signed in
+  // The reader still sees their images after a reload
   await page.reload();
   await page.waitForSelector('.frame__image');
-  await page.waitForTimeout(500);
-  check(await page.locator('.frame__badge').count() === 2, 'waiting images survive a reload');
-  requests.length = 0;
+  await page.waitForTimeout(600);
+  check(await page.locator('.frame__badge').count() === 2, 'submitted images survive a reload for their maker');
+
+  // As editor: images go live at once
   await page.unrouteAll({ behavior: 'ignoreErrors' });
   await mock(page, true);
   await page.goto(BASE + '/c/persia/spaces');
   await page.waitForSelector('text=מצב עריכה');
-  await page.waitForTimeout(1500);
-  const uploads = requests.filter((r) => r.path.includes('/storage/v1/object/upload/sign/architaip-media/persia/'));
-  check(uploads.length === 2, `waiting images upload after sign-in (${uploads.length})`);
-  const saves = requests.filter((r) => r.path === '/edit/images');
-  const last = saves.at(-1)?.body ?? '';
-  check(last.includes('"private"') && last.includes('"threshold"') && last.includes('storage/v1/object/public'), 'both images saved together, neither overwrites the other');
-  check(await page.locator('.frame__badge').count() === 0, 'pending badges clear after saving');
+  await page.waitForTimeout(800);
 
   // Signed in: a drop saves straight away
   requests.length = 0;
