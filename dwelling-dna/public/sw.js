@@ -1,7 +1,7 @@
 // Pages come from the network so a new version is seen at once; images and
 // built assets come from the cache, which is what makes a lecture survive a
 // bad connection.
-const CACHE = 'architaip-v1';
+const CACHE = 'architaip-v2'; // v2: the old opening image is gone
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {
