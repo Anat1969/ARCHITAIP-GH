@@ -45,7 +45,7 @@ export default function Lightbox({ item, imageUrl, entryId, entryName, onClose, 
           {...drop.props}
         >
           {!imageUrl && <span className="lightbox__drop">גררי או הדביקי כאן תמונה (Ctrl+V)</span>}
-          {isPending(entryId, item.slot) && <span className="frame__badge mono">ממתין לשמירה</span>}
+          {isPending(entryId, item.slot) && <span className="frame__badge mono">{isPending(entryId, item.slot) === 'review' ? 'ממתין לאישור' : 'ממתין לחיבור'}</span>}
         </div>
         <aside className="lightbox__side">
           <div className="mono muted">{entryName} / {item.row === 'modern' ? 'PROJECTION' : 'ANCESTRAL'} / {item.kind.en}</div>

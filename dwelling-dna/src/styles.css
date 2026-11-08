@@ -836,3 +836,12 @@ mark { background: linear-gradient(180deg, transparent 52%, #f3dc6b 52%); color:
 .film__controls .bar-btn { background: rgba(255,255,255,.12); color: #f4f1ea; border-color: transparent; }
 .film__controls .bar-btn:hover { background: rgba(255,255,255,.24); }
 @media (max-width: 620px) { .film__line { display: none; } .film__dot { width: 16px; } }
+
+/* Images readers submitted, in the editor's queue */
+.queue__title { font-size: 22px; font-weight: 300; padding: 0 var(--gutter) 10px; }
+.queue__title--pad { padding-top: 26px; }
+.queue-images__grid { list-style: none; margin: 0; padding: 0 var(--gutter); display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+.queue-image { display: grid; gap: 8px; padding: 10px; border-radius: 12px; background: var(--card); box-shadow: var(--shadow-1); }
+.queue-image img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; }
+.queue-image__meta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.queue-image__meta .mono { color: var(--muted); }

@@ -73,7 +73,7 @@ export default function SpaceFrame({ entryId, slot, kind, caption, gradient, pro
           </span>
         )}
         {drop.over && <span className="frame__over">שחררי כאן</span>}
-        {pending && !busy && <span className="frame__badge mono">ממתין לשמירה</span>}
+        {pending && !busy && <span className="frame__badge mono">{pending === 'review' ? 'ממתין לאישור' : 'ממתין לחיבור'}</span>}
         {busy && (
           <span className="frame__busy">
             <span className="frame__pulse" />

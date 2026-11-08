@@ -12,9 +12,9 @@ export const DEV_CHAT_URL = 'https://claude.ai/code/session_01VVH7JDffbMQREYfT2Y
 // and install come from it; edit mode and editor access are its items.
 export default function TopBar() {
   const { isAdmin, editing, setEditMode, user, signOut, openLogin } = useAuth();
-  const { save, entries } = useData();
+  const { save, entries, submissions } = useData();
   const navigate = useNavigate();
-  const waiting = entries.fusions.filter((f) => f.approved === false).length;
+  const waiting = entries.fusions.filter((f) => f.approved === false).length + (submissions?.length ?? 0);
   const [menu, setMenu] = useState(false);
   const aiMenu = useRef(null);
   const { pathname } = useLocation();
@@ -26,7 +26,7 @@ export default function TopBar() {
       ...(isAdmin
         ? [
           { label: editing ? 'מצב עריכה' : 'מצב קריאה', hint: editing ? 'למצב קריאה' : 'למצב עריכה', pressed: editing, onSelect: () => setEditMode(!editing) },
-          { label: waiting ? `ממתינים לאישור (${waiting})` : 'ממתינים לאישור', hint: 'מיזוגים של קוראים', onSelect: () => navigate('/pending') },
+          { label: waiting ? `ממתינים לאישור (${waiting})` : 'ממתינים לאישור', hint: 'תמונות ומיזוגים של קוראים', onSelect: () => navigate('/pending') },
         ]
         : []),
       isAdmin || user

@@ -3,7 +3,7 @@ import baseCultures from '../data/cultures';
 import { edit, supabase } from '../lib/supabase';
 import { fusionCall } from '../lib/fusion';
 import { useAuth } from './auth';
-import { allPending, deletePending, pendingKey, prepareImage, putPending, uploadImage } from '../lib/images';
+import { allPending, deletePending, pendingKey, prepareImage, putPending, submitImage, uploadImage } from '../lib/images';
 
 // Every entry in the magazine - a built-in culture, one the editor added, or a
 // fusion of several - is one shape here, so a page never has to ask which kind
@@ -12,6 +12,9 @@ import { allPending, deletePending, pendingKey, prepareImage, putPending, upload
 
 const SESSION_ID = 'default';
 const MINE = 'architaip:my-fusions';
+const MY_IMAGES = 'architaip:my-images'; // pendingKey -> url, a reader's images awaiting approval
+const readMyImages = () => { try { return JSON.parse(localStorage.getItem(MY_IMAGES) || '{}'); } catch { return {}; } };
+const writeMyImages = (v) => { try { localStorage.setItem(MY_IMAGES, JSON.stringify(v)); } catch { /* private mode */ } };
 const DataContext = createContext(null);
 
 function cultureFromRow(r) {
@@ -65,6 +68,10 @@ export function DataProvider({ children }) {
   // Images placed before sign-in: shown from this browser until uploaded.
   const [previews, setPreviews] = useState({}); // pendingKey -> object URL or link
   const [save, setSave] = useState({ state: 'idle', message: '' });
+  // A reader's images on the server, waiting for approval: shown to them.
+  const [review, setReview] = useState(readMyImages);
+  // Images readers submitted, for the editor's queue.
+  const [submissions, setSubmissions] = useState([]);
   const { isAdmin } = useAuth();
   // Writes read the latest overlay from refs, so two saves in a row on one
   // entry never overwrite each other with a stale copy.
@@ -91,6 +98,15 @@ export function DataProvider({ children }) {
       imagesRef.current = byId(im.data, 'images');
       setContent(contentRef.current);
       setImages(imagesRef.current);
+      // A reader's image the editor already approved is part of the magazine now.
+      setReview((prev) => {
+        const n = Object.fromEntries(Object.entries(prev).filter(([key, url]) => {
+          const [id, slot] = key.split('::');
+          return imagesRef.current[id]?.[slot] !== url;
+        }));
+        writeMyImages(n);
+        return n;
+      });
       setStatus(failed ? 'offline' : 'ready');
     })().catch(() => !cancelled && setStatus('offline'))
       .finally(() => clearTimeout(fallback));
@@ -171,11 +187,25 @@ export function DataProvider({ children }) {
     setPreviews((prev) => ({ ...prev, [key]: shown }));
 
     if (!isAdmin) {
-      // No dialog: the image stays in the frame and waits in this browser;
-      // the top bar says so, and it uploads once the device is an editor.
-      await putPending(key, blob ? { blob } : { url });
-      setSave({ state: 'saving', message: 'התמונה שמורה בדפדפן. תעלה לשרת כשהמכשיר יזוהה כעורכת' });
-      return 'pending';
+      // Straight to the server, from any browser. It shows here at once and
+      // joins the public magazine when the editor approves it.
+      if (!blob) {
+        setSave({ state: 'error', message: 'אפשר להוסיף כאן קובץ תמונה' });
+        return 'failed';
+      }
+      try {
+        setSave({ state: 'saving', message: 'מעלה תמונה' });
+        const res = await submitImage(id, slot, blob);
+        setReview((prev) => { const n = { ...prev, [key]: res.url }; writeMyImages(n); return n; });
+        clearPreview(key);
+        setSave({ state: 'saved', message: 'התמונה נשמרה בשרת וממתינה לאישור' });
+        return 'review';
+      } catch {
+        // No connection: keep it in this browser and send it when back online.
+        await putPending(key, { blob });
+        setSave({ state: 'error', message: 'אין חיבור. התמונה שמורה בדפדפן ותעלה כשהחיבור יחזור' });
+        return 'pending';
+      }
     }
     try {
       setSave({ state: 'saving', message: 'מעלה תמונה' });
@@ -203,9 +233,26 @@ export function DataProvider({ children }) {
     return () => { cancelled = true; };
   }, []);
 
-  // ...and are uploaded the moment the editor is signed in.
+  // ...and are sent as soon as there is a connection: the editor's straight
+  // into the magazine, a reader's to the approval queue.
   useEffect(() => {
-    if (!isAdmin || status === 'loading') return undefined;
+    if (status === 'loading') return undefined;
+    if (!isAdmin) {
+      let stop = false;
+      (async () => {
+        for (const { key, value } of await allPending()) {
+          if (stop || !value.blob) continue;
+          const [id, slot] = String(key).split('::');
+          try {
+            const res = await submitImage(id, slot, value.blob);
+            setReview((prev) => { const n = { ...prev, [key]: res.url }; writeMyImages(n); return n; });
+            clearPreview(key);
+            setSave({ state: 'saved', message: 'התמונה נשמרה בשרת וממתינה לאישור' });
+          } catch { /* still offline: try again next visit */ }
+        }
+      })();
+      return () => { stop = true; };
+    }
     let cancelled = false;
     (async () => {
       const items = await allPending();
@@ -226,15 +273,20 @@ export function DataProvider({ children }) {
 
   /** Saved images with this browser's waiting ones laid over them. */
   const shownImages = useMemo(() => {
-    const keys = Object.keys(previews);
+    const layers = { ...review, ...previews };
+    const keys = Object.keys(layers);
     if (!keys.length) return images;
     const out = { ...images };
-    for (const key of keys) {
+    for (const key of Object.keys(review)) {
+      const [id, slot] = key.split('::');
+      out[id] = { ...(out[id] ?? {}), [slot]: review[key] };
+    }
+    for (const key of Object.keys(previews)) {
       const [id, slot] = key.split('::');
       out[id] = { ...(out[id] ?? {}), [slot]: previews[key] };
     }
     return out;
-  }, [images, previews]);
+  }, [images, previews, review]);
 
   const removeImage = useCallback((id, slot) => {
     clearPreview(pendingKey(id, slot));
@@ -242,7 +294,37 @@ export function DataProvider({ children }) {
     return Promise.resolve(true);
   }, [clearPreview, setImage]);
 
-  const isPending = useCallback((id, slot) => pendingKey(id, slot) in previews, [previews]);
+  // 'local' waits in this browser, 'review' waits on the server for approval.
+  const isPending = useCallback((id, slot) => {
+    const key = pendingKey(id, slot);
+    if (key in previews) return 'local';
+    if (review[key] && images[id]?.[slot] !== review[key]) return 'review';
+    return false;
+  }, [previews, review, images]);
+
+  // The editor's queue of images readers submitted.
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let cancelled = false;
+    supabase.from('architaip_image_submissions').select('*').eq('status', 'pending').order('created_at')
+      .then(({ data }) => { if (!cancelled) setSubmissions(data ?? []); });
+    return () => { cancelled = true; };
+  }, [isAdmin]);
+
+  const decideImage = useCallback(async (sub, approve) => {
+    const saving = fusionCall(approve ? 'approve_image' : 'reject_image', { id: sub.id })
+      .then(() => ({ data: { ok: true }, error: null }))
+      .catch((err) => ({ data: null, error: { code: 'image', message: err.message } }));
+    const ok = await track(saving, approve ? 'התמונה פורסמה' : 'התמונה נדחתה');
+    if (!ok) return false;
+    setSubmissions((prev) => prev.filter((x) => x.id !== sub.id));
+    if (approve) {
+      const next = { ...(imagesRef.current[sub.culture_id] ?? {}), [sub.slot]: sub.url };
+      imagesRef.current = { ...imagesRef.current, [sub.culture_id]: next };
+      setImages(imagesRef.current);
+    }
+    return true;
+  }, [track]);
 
   const createCulture = useCallback(async (culture) => {
     const ok = await track(edit('culture', { row: cultureToRow(culture) }), 'התרבות נוספה');
@@ -286,7 +368,8 @@ export function DataProvider({ children }) {
   const value = useMemo(() => ({
     status, entries, images: shownImages, get, save, isPending,
     updateContent, setImage, attachImage, removeImage, createCulture, createFusion, approveFusion, removeEntry,
-  }), [status, entries, shownImages, get, save, isPending, updateContent, setImage, attachImage, removeImage, createCulture, createFusion, approveFusion, removeEntry]);
+    submissions, decideImage,
+  }), [status, entries, shownImages, get, save, isPending, updateContent, setImage, attachImage, removeImage, createCulture, createFusion, approveFusion, removeEntry, submissions, decideImage]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
