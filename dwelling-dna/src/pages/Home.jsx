@@ -25,7 +25,7 @@ export default function Home() {
   return (
     <div className="home" dir="rtl">
       <section className="cover">
-        <video className="cover__video" src={`${BASE}cover-video.mp4`} autoPlay muted loop playsInline poster={`${BASE}cover.png`} />
+        <video className="cover__video" src={`${BASE}cover-video.mp4`} autoPlay muted loop playsInline poster={`${BASE}cover-frame.jpg`} />
         <div className="cover__veil" />
         <div className="cover__inner">
           <motion.div className="mono cover__eyebrow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
