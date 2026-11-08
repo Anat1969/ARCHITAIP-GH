@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useData } from '../store/data';
 import { pad2 } from '../lib/dna';
+import ExplainerFilm from '../components/ExplainerFilm';
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -17,6 +18,7 @@ const DOORS = [
 
 export default function Home() {
   const { entries, status } = useData();
+  const [film, setFilm] = useState(false);
 
   useEffect(() => { document.title = 'ארכיטייפ | DWELLING DNA'; }, []);
 
@@ -41,6 +43,11 @@ export default function Home() {
             כל תרבות היא תשובה לשאלה אחת: ממה צריך להגן, ומה בונים כנגדו.
             המגזין קורא <b>{entries.cultures.length}</b> תרבויות באותם קריטריונים, ומקרין אותן אל הבית של המאה הבאה.
           </motion.p>
+          <motion.button type="button" className="film-cta" onClick={() => setFilm(true)}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+            <span className="film-cta__play" aria-hidden="true" />
+            <span><b>צפו בסרטון</b> החזון, השיטה והכלי, בדקה אחת</span>
+          </motion.button>
           <nav className="doors" aria-label="פרקי המגזין">
             {DOORS.map((d, i) => (
               <motion.div key={d.to} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.08 }}>
@@ -64,6 +71,7 @@ export default function Home() {
       {status === 'offline' && (
         <p className="notice notice--error home__offline">השרת לא זמין כרגע. המגזין מוצג מהתוכן המובנה, ושינויים לא יישמרו.</p>
       )}
+      <AnimatePresence>{film && <ExplainerFilm onClose={() => setFilm(false)} />}</AnimatePresence>
     </div>
   );
 }
